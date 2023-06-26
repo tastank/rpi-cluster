@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <time.h>
 #include <unistd.h>
 #include <VG/openvg.h>
 #include <VG/vgu.h>
@@ -78,24 +79,44 @@ int main() {
     float oil_temp_inc = 0.3f;
     float coolant_press_inc = 0.13f;
     float coolant_temp_inc = 0.23f;
-    float rpm_inc = 15.0f;
+    float rpm_inc = 11.0f;
 
-    while (1) {
+    time_t start_time = time(NULL);
+    while (time(NULL) < start_time + 60) {
         Start(width, height);                   // Start the picture
+        Background(0, 0, 0);                   // Black background
 
         float crit_label_x = width/2 + 20;
         float crit_label_y = height/2 - 150;
-        Fill(255, 0, 0, 1);
-        for (int c = 0; c < gauges.size(); c++) {
-            State state = gauges[c]->get_state();
-            if (gauges[c]->get_state() == CRIT) {
-                Text(crit_label_x, crit_label_y, gauges[c]->get_name(), MonoTypeface, 36.0f);
+        // set background if any state is CRIT
+        bool black_text = false;
+        for (Gauge *gauge : gauges) {
+            State state = gauge->get_state();
+            if (gauge->get_state() == CRIT) {
+                if (time(NULL) % 2) {
+                    Background(150, 0, 0);
+                    black_text = true;
+                    break;
+                }
+            }
+        }
+
+        for (Gauge *gauge : gauges) {
+            State state = gauge->get_state();
+            if (gauge->get_state() == CRIT) {
+                if (black_text) {
+                    Fill(0, 0, 0, 1);
+                }else {
+                    VGfloat color[4];
+                    gauge->get_color(CRIT, color);
+                    setfill(color);
+                }
+                Text(crit_label_x, crit_label_y, gauge->get_name(), MonoTypeface, 36.0f);
                 crit_label_y -= 50.0f;
             }
 
         }
 
-        Background(0, 0, 0);                   // Black background
 
         // TODO remove. For alignment purposes only
         /*
