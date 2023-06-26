@@ -1,5 +1,6 @@
 #include <float.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include <VG/openvg.h>
 #include <VG/vgu.h>
@@ -8,14 +9,14 @@
 
 #include "RoundGauge.h"
 
-#define OUTLINE_STROKE_WIDTH 4.0f
+#define OUTLINE_STROKE_WIDTH 8.0f
 
 // TODO support non-linear round_gauges
 
 //private functions
 void _set_stroke_color(State state);
 
-RoundGauge create_round_gauge(int x, int y, int size, int numranges, float *bounds, State *states) {
+RoundGauge create_round_gauge(int x, int y, int size, int numdigits, int numranges, float *bounds, State *states) {
     float min = FLT_MAX;
     float max = FLT_MIN;
     // TODO free?
@@ -36,6 +37,7 @@ RoundGauge create_round_gauge(int x, int y, int size, int numranges, float *boun
     round_gauge.x = x;
     round_gauge.y = y;
     round_gauge.size = size;
+    round_gauge.num_digits = numdigits;
     round_gauge.num_ranges = numranges;
     round_gauge.ranges = ranges;
     round_gauge.min = min;
@@ -74,6 +76,17 @@ void draw_value(RoundGauge round_gauge, float value) {
     float size = (round_gauge.size - OUTLINE_STROKE_WIDTH * 2.0f - 1.0f) / 2.0f;
     StrokeWidth(size);
     ArcOutline(round_gauge.x, round_gauge.y, size, size, angle.start, angle.extent);
+
+    char value_buf[80];
+    // TODO protect against buffer overflows!
+    sprintf(value_buf, "%*.0f", round_gauge.num_digits, value);
+    Fill(255, 255, 255, 1);
+
+    float baseline_width = TextWidth(value_buf, MonoTypeface, 1.0f);
+    float point_size = round_gauge.size/2.1f / baseline_width;
+    float text_width = TextWidth(value_buf, MonoTypeface, point_size);
+    float text_height = TextHeight(MonoTypeface, point_size);
+    TextEnd(round_gauge.x + text_width + round_gauge.size/20.0f, round_gauge.y - text_height, value_buf, MonoTypeface, point_size);
 }
 
 void draw_outline(RoundGauge round_gauge) {
