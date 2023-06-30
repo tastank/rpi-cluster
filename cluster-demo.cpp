@@ -173,6 +173,6 @@ int main() {
     }
 
     finish();                       // Graphics cleanup
-    exit(0);
+    return 0;
 }
 

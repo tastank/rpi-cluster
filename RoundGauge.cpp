@@ -79,11 +79,12 @@ void RoundGauge::draw_value() {
     get_color(get_state(), color);
     setstroke(color);
     // Unfortunately, Arc() fills the area bounded by the outline and a straight line from start to end.
-    // This leaves a small gap to the outline and draws the correctly sized wedge
-    float value_size = (size - OUTLINE_STROKE_WIDTH * 3.0f) / 2.0f;
-    StrokeWidth(value_size);
-    ArcOutline(x, y, value_size, value_size, angle.start, angle.extent);
-
+    // This leaves a small gap to the outline (OUTLINE_STROKE_WIDTH/2) and draws the correctly sized wedge
+    float value_outer_diameter = (size - OUTLINE_STROKE_WIDTH * 3.0f);
+    float value_width = value_outer_diameter / 2.0f * 0.5f; // leave a gap at the center
+    float value_centerline_diameter = value_outer_diameter - value_width;
+    StrokeWidth(value_width);
+    ArcOutline(x, y, value_centerline_diameter, value_centerline_diameter, angle.start, angle.extent);
 }
 
 void RoundGauge::draw_text_value() {
