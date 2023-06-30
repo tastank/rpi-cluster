@@ -29,8 +29,10 @@ typedef struct RoundGauge {
 } RoundGauge;
 
 RoundGauge create_round_gauge(int x, int y, int size, int numdigits, int numranges, float *bounds, State *states);
+State get_state(RoundGauge round_gauge, float value);
 void draw_round_gauge(RoundGauge round_gauge, float value);
 void draw_value(RoundGauge round_gauge, float value);
+void draw_text_value(RoundGauge round_gauge, float value);
 void draw_outline(RoundGauge round_gauge);
 Angle get_angle(RoundGauge round_gauge, float start_value, float end_value);
 

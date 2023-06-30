@@ -1,5 +1,5 @@
 INCLUDEFLAGS=-I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads -fPIC
 
-cluster-demo: cluster-demo.c RoundGauge.c
+cluster-demo: cluster-demo.c RoundGauge.c OpenVGHelper.c
 	@rm -f $@
-	gcc -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads cluster-demo.c RoundGauge.c -o $@ -lshapes
+	gcc -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads cluster-demo.c RoundGauge.c OpenVGHelper.c -o $@ -lshapes

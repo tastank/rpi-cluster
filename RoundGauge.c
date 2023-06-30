@@ -16,6 +16,24 @@
 //private functions
 void _set_stroke_color(State state);
 
+State get_state(RoundGauge round_gauge, float value) {
+    State current_state;
+    char state_found = 0;
+    for (int c = 0; c < round_gauge.num_ranges; c++) {
+        if (value >= round_gauge.ranges[c].min && value < round_gauge.ranges[c].max) {
+            current_state = round_gauge.ranges[c].state;
+            state_found = 1;
+            break;
+        }
+    }
+
+    if (!state_found) {
+        current_state = CRIT;
+    }
+
+    return current_state;
+}
+
 RoundGauge create_round_gauge(int x, int y, int size, int numdigits, int numranges, float *bounds, State *states) {
     float min = FLT_MAX;
     float max = FLT_MIN;
@@ -50,33 +68,29 @@ RoundGauge create_round_gauge(int x, int y, int size, int numdigits, int numrang
 }
 
 void draw_round_gauge(RoundGauge round_gauge, float value) {
-    // TODO draw value as text as well
-    // To do that: add format and unit variables to the struct, use sprintf
+    // TODO Add unit to text?
+    draw_text_value(round_gauge, value);
     draw_value(round_gauge, value);
     draw_outline(round_gauge);
 }
 
 void draw_value(RoundGauge round_gauge, float value) {
+
     if (value < round_gauge.min) value = round_gauge.min;
     if (value > round_gauge.max) value = round_gauge.max;
 
-    State current_state;
-    for (int c = 0; c < round_gauge.num_ranges; c++) {
-        if (value >= round_gauge.ranges[c].min && value < round_gauge.ranges[c].max) {
-            current_state = round_gauge.ranges[c].state;
-            break;
-        }
-    }
-
     Angle angle = get_angle(round_gauge, round_gauge.min, value);
 
-    _set_stroke_color(current_state);
+    _set_stroke_color(get_state(round_gauge, value));
     // Unfortunately, Arc() fills the area bounded by the outline and a straight line from start to end.
     // This leaves a small gap to the outline and draws the correctly sized wedge
     float size = (round_gauge.size - OUTLINE_STROKE_WIDTH * 2.0f - 1.0f) / 2.0f;
     StrokeWidth(size);
     ArcOutline(round_gauge.x, round_gauge.y, size, size, angle.start, angle.extent);
 
+}
+
+void draw_text_value(RoundGauge round_gauge, float value) {
     char value_buf[80];
     // TODO protect against buffer overflows!
     sprintf(value_buf, "%*.0f", round_gauge.num_digits, value);
@@ -86,7 +100,7 @@ void draw_value(RoundGauge round_gauge, float value) {
     float point_size = round_gauge.size/2.1f / baseline_width;
     float text_width = TextWidth(value_buf, MonoTypeface, point_size);
     float text_height = TextHeight(MonoTypeface, point_size);
-    TextEnd(round_gauge.x + text_width + round_gauge.size/20.0f, round_gauge.y - text_height, value_buf, MonoTypeface, point_size);
+    Text(round_gauge.x + round_gauge.size/20.0f, round_gauge.y - text_height, value_buf, MonoTypeface, point_size);
 }
 
 void draw_outline(RoundGauge round_gauge) {
