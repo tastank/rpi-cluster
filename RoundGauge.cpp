@@ -80,7 +80,7 @@ void RoundGauge::draw_value() {
     setstroke(color);
     // Unfortunately, Arc() fills the area bounded by the outline and a straight line from start to end.
     // This leaves a small gap to the outline and draws the correctly sized wedge
-    float value_size = (size - OUTLINE_STROKE_WIDTH * 2.0f - 1.0f) / 2.0f;
+    float value_size = (size - OUTLINE_STROKE_WIDTH * 3.0f) / 2.0f;
     StrokeWidth(value_size);
     ArcOutline(x, y, value_size, value_size, angle.start, angle.extent);
 
@@ -94,13 +94,13 @@ void RoundGauge::draw_text_value() {
 
     float point_size = get_max_text_size(value_buf, MonoTypeface, size/2.1f);
     float text_height = TextHeight(MonoTypeface, point_size);
-    Text(x + size/20.0f, y - text_height, value_buf, MonoTypeface, point_size);
+    TextEnd(x + size/2.0f, y - text_height, value_buf, MonoTypeface, point_size);
 }
 
 void RoundGauge::draw_outline() {
     // TODO parameterize this?
     StrokeWidth(OUTLINE_STROKE_WIDTH);
-    float outline_size = size - OUTLINE_STROKE_WIDTH / 2.0f; // want the outer limit to be round_gauge.size
+    float outline_size = size - OUTLINE_STROKE_WIDTH; // want the outer limit to be round_gauge.size
 
     for (int c = 0; c < num_ranges; c++) {
         VGfloat color[4];
