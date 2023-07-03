@@ -4,6 +4,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
+#include <stdexcept>
 #include <string>
 #include <VG/openvg.h>
 #include <VG/vgu.h>
@@ -12,6 +13,7 @@
 
 #include <wiringSerial.h>
 
+#include "DigitalGauge.h"
 #include "RoundGauge.h"
 #include "OpenVGHelper.h"
 
@@ -67,18 +69,30 @@ int main() {
         {WARN, OK, WARN, CRIT}
     );
 
+    DigitalGauge speedometer(
+        "MPH",
+        512.0f, 325.0f,
+        120.0f,
+        1,
+        1,
+        {0.0f, 120.0f},
+        {OK}
+    );
+
     std::vector<Gauge*> gauges;
     gauges.push_back(&tachometer);
     gauges.push_back(&oil_press_gauge);
     gauges.push_back(&oil_temp_gauge);
     gauges.push_back(&water_press_gauge);
     gauges.push_back(&water_temp_gauge);
+    gauges.push_back(&speedometer);
 
     float oil_press = 0.0f;
     float oil_temp = 0.0f;
     float water_press = 0.0f;
     float water_temp = 0.0f;
     float rpm = 0.0f;
+    float mph = 100.0f;
 
     int fd;
     if ((fd=serialOpen("/dev/ttyUSB0", 921600)) < 0) {
@@ -100,20 +114,24 @@ int main() {
             } while (parameter_value_str.back() != '\n' && serialDataAvail(fd));
             // last character is now '\n'; delete it to get just the number
             parameter_value_str.pop_back();
-            int parameter_value = std::stoi(parameter_value_str);
+            try {
+                int parameter_value = std::stoi(parameter_value_str);
 
-            if (serial_string == "RPM:") {
-                rpm = parameter_value;
-            } else if (serial_string == "OP*10:") {
-                oil_press = parameter_value / 10.0f;
-            } else if (serial_string == "OT*10:") {
-                oil_temp = parameter_value / 10.0f;
-            } else if (serial_string == "WP*10:") {
-                water_press = parameter_value / 10.0f;
-            } else if (serial_string == "WT*10:") {
-                water_temp = parameter_value / 10.0f;
-            } else {
-                fprintf(stderr, "Unexpected serial parameter name\n", strerror(errno));
+                if (serial_string == "RPM:") {
+                    rpm = parameter_value;
+                } else if (serial_string == "OP10:") {
+                    oil_press = parameter_value / 10.0f;
+                } else if (serial_string == "OT10:") {
+                    oil_temp = parameter_value / 10.0f;
+                } else if (serial_string == "WP10:") {
+                    water_press = parameter_value / 10.0f;
+                } else if (serial_string == "WT10:") {
+                    water_temp = parameter_value / 10.0f;
+                } else {
+                    fprintf(stderr, "Unexpected serial parameter name \"%s\"\n", serial_string);
+                }
+            } catch (std::invalid_argument e) {
+                fprintf(stderr, "An exception occurred: %s; parameter_value_str \"%s\"\n", e.what(), parameter_value_str);
             }
         }
 
@@ -179,12 +197,14 @@ int main() {
         oil_temp_gauge.set_value(oil_temp);
         water_press_gauge.set_value(water_press);
         water_temp_gauge.set_value(water_temp);
+        speedometer.set_value(mph);
 
         tachometer.draw();
         oil_press_gauge.draw();
         oil_temp_gauge.draw();
         water_press_gauge.draw();
         water_temp_gauge.draw();
+        speedometer.draw();
 
         End();                           // End the picture
     }

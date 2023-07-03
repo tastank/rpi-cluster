@@ -4,6 +4,9 @@
 
 #include <VG/openvg.h>
 
+#ifndef GAUGE_H
+#define GAUGE_H
+
 typedef enum State {OK, WARN, CRIT} State;
 
 typedef struct Range {
@@ -31,3 +34,6 @@ public:
     State get_state();
     void draw();
 };
+
+#endif
+
