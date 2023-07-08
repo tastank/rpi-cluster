@@ -152,7 +152,7 @@ int main() {
         BeginDrawing();
         ClearBackground(BLACK);
 #ifdef DEBUG
-        DrawFPS(100, 20);
+        DrawFPS(200, 20);
 #endif
 
         Vector2 crit_label_pos = {SCREEN_WIDTH/2 + 20, SCREEN_HEIGHT/2 + 120};
