@@ -6,21 +6,29 @@
 #include <errno.h>
 #include <stdexcept>
 #include <string>
-#include <VG/openvg.h>
-#include <VG/vgu.h>
-#include <fontinfo.h>
-#include <shapes.h>
+
+#include <raylib.h>
 
 #include <wiringSerial.h>
 
 #include "DigitalGauge.h"
 #include "RoundGauge.h"
-#include "OpenVGHelper.h"
+#include "RaylibHelper.h"
+
+#define DEBUG
 
 int main() {
-    int width, height;
-    char *s;
-    init(&width, &height);                   // Graphics initialization
+
+    const int SCREEN_WIDTH = 1024;
+    const int SCREEN_HEIGHT = 600;
+
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "");
+
+    Font font = LoadFontEx("resources/fonts/SimplyMono-Bold.ttf", 144.0f, NULL, 0);
+    //Font font = LoadFont("resources/fonts/SimplyMono-Bold.ttf");
+    SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR);
+    SetTargetFPS(60);
+    Color text_color = WHITE;
 
     RoundGauge tachometer(
         "RPM",
@@ -29,7 +37,8 @@ int main() {
         4,
         4,
         {0.0f, 1500.0f, 5000.0f, 6000.0f, 7500.0f},
-        {WARN, OK, WARN, CRIT}
+        {WARN, OK, WARN, CRIT},
+        font
     );
     RoundGauge oil_press_gauge(
         "OIL PRESS",
@@ -38,26 +47,29 @@ int main() {
         3,
         4,
         {0.0f, 10.0f, 20.0f, 80.0f, 100.0f},
-        {CRIT, WARN, OK, WARN}
+        {CRIT, WARN, OK, WARN},
+        font
     );
     RoundGauge oil_temp_gauge(
         "OIL TEMP",
         // keep everything nice and aligned
-        oil_press_gauge.x, height-oil_press_gauge.y,
+        oil_press_gauge.x, SCREEN_HEIGHT-oil_press_gauge.y,
         150.0f,
         3,
         4,
-        {0.0f, 150.0f, 200.0f, 230.0f, 300.0f},
-        {WARN, OK, WARN, CRIT}
+        {0.0f, 200.0f, 240.0f, 260.0f, 330.0f},
+        {WARN, OK, WARN, CRIT},
+        font
     );
     RoundGauge water_press_gauge(
         "WATER PRESS",
-        width-oil_press_gauge.x, oil_press_gauge.y,
+        SCREEN_WIDTH-oil_press_gauge.x, oil_press_gauge.y,
         150.0f,
         3,
         4,
-        {0.0f, 10.0f, 20.0f, 80.0f, 100.0f},
-        {CRIT, WARN, OK, WARN}
+        {0.0f, 8.0f, 14.0f, 18.0f, 24.0f},
+        {CRIT, WARN, OK, WARN},
+        font
     );
     RoundGauge water_temp_gauge(
         "WATER TEMP",
@@ -66,17 +78,19 @@ int main() {
         3,
         4,
         {0.0f, 140.0f, 200.0f, 220.0f, 250.0f},
-        {WARN, OK, WARN, CRIT}
+        {WARN, OK, WARN, CRIT},
+        font
     );
 
     DigitalGauge speedometer(
         "MPH",
-        512.0f, 325.0f,
+        512.0f, 275.0f,
         120.0f,
         1,
         1,
         {0.0f, 120.0f},
-        {OK}
+        {OK},
+        font
     );
 
     std::vector<Gauge*> gauges;
@@ -97,11 +111,11 @@ int main() {
     int fd;
     if ((fd=serialOpen("/dev/ttyUSB0", 921600)) < 0) {
         fprintf(stderr, "Unable to open serial device: %s\n", strerror(errno));
-        return 1;
+        //return 1;
     }
 
     time_t start_time = time(NULL);
-    while (time(NULL) < start_time + 60) {
+    while (!WindowShouldClose() && time(NULL) < start_time + 60) {
 
         while(serialDataAvail(fd)) {
             std::string serial_string, parameter_value_str;
@@ -135,18 +149,20 @@ int main() {
             }
         }
 
-        Start(width, height);                   // Start the picture
-        Background(0, 0, 0);                   // Black background
+        BeginDrawing();
+        ClearBackground(BLACK);
+#ifdef DEBUG
+        DrawFPS(100, 20);
+#endif
 
-        float crit_label_x = width/2 + 20;
-        float crit_label_y = height/2 - 150;
+        Vector2 crit_label_pos = {SCREEN_WIDTH/2 + 20, SCREEN_HEIGHT/2 + 120};
         // set background if any state is CRIT
         bool black_text = false;
         for (Gauge *gauge : gauges) {
             State state = gauge->get_state();
             if (gauge->get_state() == CRIT) {
                 if (time(NULL) % 2) {
-                    Background(150, 0, 0);
+                    ClearBackground(MAROON);
                     black_text = true;
                     break;
                 }
@@ -157,14 +173,13 @@ int main() {
             State state = gauge->get_state();
             if (gauge->get_state() == CRIT) {
                 if (black_text) {
-                    Fill(0, 0, 0, 1);
+                    text_color = BLACK;
                 }else {
-                    VGfloat color[4];
-                    gauge->get_color(CRIT, color);
-                    setfill(color);
+                    text_color = gauge->get_color(CRIT);
                 }
-                Text(crit_label_x, crit_label_y, gauge->get_name(), MonoTypeface, 36.0f);
-                crit_label_y -= 50.0f;
+                //TODO set font size more intelligently
+                DrawTextEx(font, gauge->get_name(), crit_label_pos, 36.0f, 0, text_color);
+                crit_label_pos.y += 40.0f;
             }
 
         }
@@ -174,23 +189,23 @@ int main() {
         /*
         Stroke(255, 255, 255, 1);
         StrokeWidth(1.0f);
-        Line(0, 0, width, height);
-        Line(0, height, width, 0);
-        Line(width/2.0f, 0, width/2.0f, height);
-        Line(0, height/2.0f, width, height/2.0f);
+        Line(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+        Line(0, SCREEN_HEIGHT, SCREEN_WIDTH, 0);
+        Line(SCREEN_WIDTH/2.0f, 0, SCREEN_WIDTH/2.0f, SCREEN_HEIGHT);
+        Line(0, SCREEN_HEIGHT/2.0f, SCREEN_WIDTH, SCREEN_HEIGHT/2.0f);
         */
 
         // Labels
 #define MAJOR_LABEL_SIZE 36.0f
 #define MINOR_LABEL_SIZE 18.0f
-        Fill(255, 255, 255, 1);
-        TextActualMid(oil_press_gauge.x, height/2.0f, "OIL", MonoTypeface, MAJOR_LABEL_SIZE);
-        TextActualMid(water_press_gauge.x, height/2.0f, "WATER", MonoTypeface, MAJOR_LABEL_SIZE);
 
-        TextActualMid(oil_press_gauge.x, oil_press_gauge.y+oil_press_gauge.size/2.0f + 30.0f, "PRESS", MonoTypeface, MINOR_LABEL_SIZE);
-        TextActualMid(oil_temp_gauge.x, oil_temp_gauge.y-oil_temp_gauge.size/2.0f - 30.0f, "TEMP", MonoTypeface, MINOR_LABEL_SIZE);
-        TextActualMid(water_press_gauge.x, water_press_gauge.y+water_press_gauge.size/2.0f + 30.0f, "PRESS", MonoTypeface, MINOR_LABEL_SIZE);
-        TextActualMid(water_temp_gauge.x, water_temp_gauge.y-water_temp_gauge.size/2.0f - 30.0f, "TEMP", MonoTypeface, MINOR_LABEL_SIZE);
+        DrawTextExAlign(font, "OIL", {oil_press_gauge.x, SCREEN_HEIGHT/2}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawPixel(oil_press_gauge.x, SCREEN_HEIGHT/2, MAGENTA);
+        DrawTextExAlign(font, "WATER", {water_press_gauge.x, SCREEN_HEIGHT/2}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "PRESS", {oil_press_gauge.x, oil_press_gauge.y+oil_press_gauge.size/2+30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "TEMP", {oil_press_gauge.x, oil_temp_gauge.y-oil_temp_gauge.size/2-30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "PRESS", {water_press_gauge.x, water_press_gauge.y+water_press_gauge.size/2+30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "TEMP", {water_press_gauge.x, water_temp_gauge.y-water_temp_gauge.size/2-30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
 
         tachometer.set_value(rpm);
         oil_press_gauge.set_value(oil_press);
@@ -206,11 +221,12 @@ int main() {
         water_temp_gauge.draw();
         speedometer.draw();
 
-        End();                           // End the picture
+        EndDrawing();
     }
 
-    finish();                       // Graphics cleanup
     serialClose(fd); // close serial connection to the Arduino
+    UnloadFont(font);
+    CloseWindow();
     return 0;
 }
 

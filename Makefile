@@ -1,5 +1,11 @@
-INCLUDEFLAGS=-I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads -fPIC
+SOURCES := cluster-demo.cpp RoundGauge.cpp Gauge.cpp DigitalGauge.cpp RaylibHelper.cpp
 
-cluster-demo: cluster-demo.cpp RoundGauge.cpp Gauge.cpp OpenVGHelper.cpp DigitalGauge.cpp
+#INCLUDEFLAGS=-I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads -fPIC
+INCLUDEFLAGS := -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
+
+LIBFLAGS := -lraylib -lpthread -lGL -lm -ldl -lgbm -ldrm -lEGL -lwiringPi
+
+cluster-demo: $(SOURCES)
 	@rm -f $@
-	g++ -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads cluster-demo.cpp Gauge.cpp DigitalGauge.cpp RoundGauge.cpp OpenVGHelper.cpp -o $@ -lshapes -lwiringPi
+	#g++ 
+	g++ $(INCLUDEFLAGS) $(SOURCES) -o $@ $(LIBFLAGS)

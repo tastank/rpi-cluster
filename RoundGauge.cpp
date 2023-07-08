@@ -1,3 +1,6 @@
+
+#include "RoundGauge.h"
+
 #include <float.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -7,19 +10,16 @@
 #include <vector>
 #include <string>
 
-#include <VG/openvg.h>
-#include <VG/vgu.h>
-#include <fontinfo.h>
-#include <shapes.h>
+#include <raylib.h>
 
-#include "RoundGauge.h"
-#include "OpenVGHelper.h"
+#include "RaylibHelper.h"
 
+// TODO parameterize this?
 #define OUTLINE_STROKE_WIDTH 8.0f
 
 // TODO support non-linear round_gauges
 
-RoundGauge::RoundGauge(const char *name, int x, int y, int size, int numdigits, int numranges, std::initializer_list<float> bounds, std::initializer_list<State> states) {
+RoundGauge::RoundGauge(const char *name, int x, int y, int size, int numdigits, int numranges, std::initializer_list<float> bounds, std::initializer_list<State> states, Font font) {
     this->name = name;
     std::vector<float> bounds_vector{bounds};
     std::vector<State> states_vector{states};
@@ -49,8 +49,10 @@ RoundGauge::RoundGauge(const char *name, int x, int y, int size, int numdigits, 
     this->min = min;
     this->max = max;
     // TODO Parameterize these angles
-    this->start_angle = 270.0f;
-    this->end_angle = 0.0f;
+    // Raylib measures angles anti-clockwise starting from down and allows negative angles, so this range goes clockwise from 6:00 (min) to 3:00 (max)
+    this->start_angle = 0.0f;
+    this->end_angle = -270.0f;
+    this->font = font;
 }
 
 void RoundGauge::draw() {
@@ -60,71 +62,54 @@ void RoundGauge::draw() {
         Fill(255, 0, 0, 1);
         Stroke(255, 255, 0, 1);
         Rect(x-size/2, y-size/2, size, size);
-        Fill(0, 0, 0, 1);
-        TextActualMid(x, y, (char *)get_name(), MonoTypeface, get_max_text_size((char *)get_name(), MonoTypeface, size*0.8f));
+        DrawTextExAlign(font, (char *)get_name(), (Vector2) {x, y}, get_max_text_size((char *)get_name(), font, size*0.8f), 0, WHITE, CENTER, MIDDLE);
     } else {
         */
+        draw_outline();
         draw_text_value();
         draw_value();
-        draw_outline();
     //}
 
 }
 
 void RoundGauge::draw_value() {
-
     Angle angle = get_angle(min, get_value());
 
-    VGfloat color[4];
-    get_color(get_state(), color);
-    setstroke(color);
-    // Unfortunately, Arc() fills the area bounded by the outline and a straight line from start to end.
-    // This leaves a small gap to the outline (OUTLINE_STROKE_WIDTH/2) and draws the correctly sized wedge
-    float value_outer_diameter = (size - OUTLINE_STROKE_WIDTH * 3.0f);
-    float value_width = value_outer_diameter / 2.0f * 0.5f; // leave a gap at the center
-    float value_centerline_diameter = value_outer_diameter - value_width;
-    StrokeWidth(value_width);
-    ArcOutline(x, y, value_centerline_diameter, value_centerline_diameter, angle.start, angle.extent);
+    Color color = get_color(get_state());
+    // size represents a square the gauge should fit in (effectively the diameter of the circle); DrawCircleSector draws by radius
+    float sector_size = (size - OUTLINE_STROKE_WIDTH * 3.0f) / 2.0f;
+    // TODO use DrawRing to leave a hole in the middle
+    DrawRing((Vector2){x, y}, sector_size/2.0f, sector_size, angle.start, angle.end, 360, color);
+    //DrawCircleSector((Vector2){x, y}, sector_size, angle.start, angle.end, 0, color);
 }
 
 void RoundGauge::draw_text_value() {
     char value_buf[80];
     // TODO protect against buffer overflows!
     sprintf(value_buf, "%*.0f", num_digits, value);
-    Fill(255, 255, 255, 1);
 
-    float point_size = get_max_text_size(value_buf, MonoTypeface, size/2.1f);
-    float text_height = TextHeight(MonoTypeface, point_size);
-    TextEnd(x + size/2.0f, y - text_height, value_buf, MonoTypeface, point_size);
+    float point_size = get_max_text_size(value_buf, font, size/2.1f);
+    DrawTextExAlign(font, value_buf, (Vector2) {x + size/2, y}, point_size, 0, WHITE, RIGHT, TOP);
 }
 
 void RoundGauge::draw_outline() {
-    // TODO parameterize this?
-    StrokeWidth(OUTLINE_STROKE_WIDTH);
-    float outline_size = size - OUTLINE_STROKE_WIDTH; // want the outer limit to be round_gauge.size
-
     for (int c = 0; c < num_ranges; c++) {
-        VGfloat color[4];
-        get_color(ranges[c].state, color);
-        setstroke(color);
+        Color color = get_color(ranges[c].state);
         Angle angle = get_angle(ranges[c].min, ranges[c].max);
-        ArcOutline(x, y, outline_size, outline_size, angle.start, angle.extent);
+        DrawRing((Vector2){x, y}, size/2.0f - OUTLINE_STROKE_WIDTH, size/2.0f, angle.start, angle.end, 360, color);
     };
 }
 
 
 Angle RoundGauge::get_angle(float start_value, float end_value) {
-    // OpenVG draws angles anti-clockwise, so end_value is used to find the start of the angle
+    Angle angle;
+    // Raylib draws angles anti-clockwise, so end_value is used to find the start of the angle
     // and start_value its extent
     float end_value_normalized = (end_value - min) / (max - min);
     float start_value_normalized = (start_value - min) / (max - min);
     // TODO make a transformation function?
-    float angle_start = start_angle - start_value_normalized * (start_angle - end_angle);
-    float angle_end = start_angle - end_value_normalized * (start_angle - end_angle);
-
-    Angle angle;
-    angle.start = angle_end;
-    angle.extent = angle_start - angle_end;
+    angle.start = start_angle + start_value_normalized * (end_angle - start_angle);
+    angle.end = start_angle + end_value_normalized * (end_angle - start_angle);
 
     return angle;
 }
