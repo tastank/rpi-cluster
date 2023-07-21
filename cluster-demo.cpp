@@ -12,10 +12,12 @@
 #include <wiringSerial.h>
 
 #include "DigitalGauge.h"
+#include "RectGauge.h"
 #include "RoundGauge.h"
 #include "RaylibHelper.h"
 
 #define DEBUG
+#define TEST
 
 int main() {
 
@@ -24,7 +26,7 @@ int main() {
 
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "");
 
-    Font font = LoadFontEx("resources/fonts/SimplyMono-Bold.ttf", 144.0f, NULL, 0);
+    Font font = LoadFontEx("/home/pi/rpi-cluster/resources/fonts/SimplyMono-Bold.ttf", 144.0f, NULL, 0);
     //Font font = LoadFont("resources/fonts/SimplyMono-Bold.ttf");
     SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR);
     SetTargetFPS(60);
@@ -86,12 +88,24 @@ int main() {
         "MPH",
         512.0f, 275.0f,
         120.0f,
-        1,
+        3,
         1,
         {0.0f, 120.0f},
         {OK},
         font
+
     );
+    RectGauge fuel_qty_gauge(
+        "FUEL",
+        220, 300,
+        (Vector2) {60.0f, 400.0f},
+        VERTICAL,
+        3,
+        3,
+        {0.0f, 0.15f, 0.3f, 1.0f},
+        {CRIT, WARN, OK}
+    );
+
 
     std::vector<Gauge*> gauges;
     gauges.push_back(&tachometer);
@@ -100,23 +114,65 @@ int main() {
     gauges.push_back(&water_press_gauge);
     gauges.push_back(&water_temp_gauge);
     gauges.push_back(&speedometer);
+    gauges.push_back(&fuel_qty_gauge);
 
-    float oil_press = 0.0f;
-    float oil_temp = 0.0f;
-    float water_press = 0.0f;
-    float water_temp = 0.0f;
+    float oil_press = 30.0f;
+    float oil_temp = 100.0f;
+    float water_press = 10.0f;
+    float water_temp = 100.0f;
     float rpm = 0.0f;
-    float mph = 100.0f;
-
+    float mph = 0.0f;
+    float fuel_qty = 1.0f;
+#ifdef TEST
+    float oil_press_inc = 0.1f;
+    float oil_temp_inc = 0.03f;
+    float water_press_inc = 0.01f;
+    float water_temp_inc = 0.03f;
+    float rpm_inc = 1.0f;
+    float mph_inc = 0.3f;
+    float fuel_qty_inc = -0.0003f;
+#else
     int fd;
     if ((fd=serialOpen("/dev/ttyUSB0", 921600)) < 0) {
         fprintf(stderr, "Unable to open serial device: %s\n", strerror(errno));
         //return 1;
     }
+#endif
 
     time_t start_time = time(NULL);
     while (!WindowShouldClose() && time(NULL) < start_time + 60) {
 
+#ifdef TEST
+        rpm += rpm_inc;
+        oil_press += oil_press_inc;
+        oil_temp += oil_temp_inc;
+        water_press += water_press_inc;
+        water_temp += water_temp_inc;
+        mph += mph_inc;
+        fuel_qty += fuel_qty_inc;
+
+        if (rpm >= tachometer.get_max() || rpm <= tachometer.get_min()) {
+            rpm_inc *= -1;
+        }
+        if (oil_press >= oil_press_gauge.get_max() || oil_press <= oil_press_gauge.get_min()) {
+            oil_press_inc *= -1;
+        }
+        if (oil_temp >= oil_temp_gauge.get_max() || oil_temp <= oil_temp_gauge.get_min()) {
+            oil_temp_inc *= -1;
+        }
+        if (water_temp >= water_temp_gauge.get_max() || water_temp <= water_temp_gauge.get_min()) {
+            water_temp_inc *= -1;
+        }
+        if (water_press >= water_press_gauge.get_max() || water_press <= water_press_gauge.get_min()) {
+            water_press_inc *= -1;
+        }
+        if (mph >= speedometer.get_max() || mph <= speedometer.get_min()) {
+            mph_inc *= -1;
+        }
+        if (fuel_qty >= fuel_qty_gauge.get_max() || fuel_qty <= fuel_qty_gauge.get_min()) {
+            fuel_qty_inc *= -1;
+        }
+#else
         while(serialDataAvail(fd)) {
             std::string serial_string, parameter_value_str;
             do {
@@ -148,6 +204,7 @@ int main() {
                 fprintf(stderr, "An exception occurred: %s; parameter_value_str \"%s\"\n", e.what(), parameter_value_str);
             }
         }
+#endif
 
         BeginDrawing();
         ClearBackground(BLACK);
@@ -155,7 +212,7 @@ int main() {
         DrawFPS(200, 20);
 #endif
 
-        Vector2 crit_label_pos = {SCREEN_WIDTH/2 + 20, SCREEN_HEIGHT/2 + 120};
+        Vector2 crit_label_pos = {tachometer.x + 20, tachometer.y + 120};
         // set background if any state is CRIT
         bool black_text = false;
         for (Gauge *gauge : gauges) {
@@ -213,6 +270,7 @@ int main() {
         water_press_gauge.set_value(water_press);
         water_temp_gauge.set_value(water_temp);
         speedometer.set_value(mph);
+        fuel_qty_gauge.set_value(fuel_qty);
 
         tachometer.draw();
         oil_press_gauge.draw();
@@ -220,11 +278,13 @@ int main() {
         water_press_gauge.draw();
         water_temp_gauge.draw();
         speedometer.draw();
+        fuel_qty_gauge.draw();
 
         EndDrawing();
     }
-
+#ifndef TEST
     serialClose(fd); // close serial connection to the Arduino
+#endif
     UnloadFont(font);
     CloseWindow();
     return 0;

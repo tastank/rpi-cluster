@@ -1,4 +1,4 @@
-SOURCES := cluster-demo.cpp RoundGauge.cpp Gauge.cpp DigitalGauge.cpp RaylibHelper.cpp
+SOURCES := cluster-demo.cpp RectGauge.cpp RoundGauge.cpp Gauge.cpp DigitalGauge.cpp RaylibHelper.cpp
 
 #INCLUDEFLAGS=-I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads -fPIC
 INCLUDEFLAGS := -I/opt/vc/include -I/opt/vc/include/interface/vmcs_host/linux -I/opt/vc/include/interface/vcos/pthreads
