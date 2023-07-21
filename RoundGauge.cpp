@@ -78,8 +78,9 @@ void RoundGauge::draw_value() {
     Color color = get_color(get_state());
     // size represents a square the gauge should fit in (effectively the diameter of the circle); DrawCircleSector draws by radius
     float sector_size = (size - OUTLINE_STROKE_WIDTH * 3.0f) / 2.0f;
-    // TODO use DrawRing to leave a hole in the middle
-    DrawRing((Vector2){x, y}, sector_size/2.0f, sector_size, angle.start, angle.end, 360, color);
+    // 120 segments per 360 degrees is enough
+    int segments = (int)(angle.start - angle.end)/3.0f;
+    DrawRing((Vector2){x, y}, sector_size/2.0f, sector_size, angle.start, angle.end, segments, color);
     //DrawCircleSector((Vector2){x, y}, sector_size, angle.start, angle.end, 0, color);
 }
 
@@ -96,7 +97,8 @@ void RoundGauge::draw_outline() {
     for (int c = 0; c < num_ranges; c++) {
         Color color = get_color(ranges[c].state);
         Angle angle = get_angle(ranges[c].min, ranges[c].max);
-        DrawRing((Vector2){x, y}, size/2.0f - OUTLINE_STROKE_WIDTH, size/2.0f, angle.start, angle.end, 360, color);
+        int segments = (int)(angle.start - angle.end)/3.0f;
+        DrawRing((Vector2){x, y}, size/2.0f - OUTLINE_STROKE_WIDTH, size/2.0f, angle.start, angle.end, segments, color);
     };
 }
 
