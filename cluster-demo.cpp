@@ -5,21 +5,31 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdexcept>
+#include <fstream>
+#include <iostream>
 #include <string>
 
 #include <raylib.h>
 
-#include <wiringSerial.h>
+#include <zmqpp/zmqpp.hpp>
 
 #include "DigitalGauge.h"
 #include "RectGauge.h"
 #include "RoundGauge.h"
 #include "RaylibHelper.h"
 
-#define DEBUG
-#define TEST
+//#define DEBUG
+#define DEBUG_FPS
+//#define TEST
 
 int main() {
+
+    const std::string endpoint = "tcp://*:9961";
+    zmqpp::context context;
+    zmqpp::socket_type type = zmqpp::socket_type::pull;
+    zmqpp::socket socket(context, type);
+
+    socket.bind(endpoint);
 
     const int SCREEN_WIDTH = 1024;
     const int SCREEN_HEIGHT = 600;
@@ -29,7 +39,7 @@ int main() {
     Font font = LoadFontEx("/home/pi/rpi-cluster/resources/fonts/SimplyMono-Bold.ttf", 144.0f, NULL, 0);
     //Font font = LoadFont("resources/fonts/SimplyMono-Bold.ttf");
     SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR);
-    SetTargetFPS(60);
+    SetTargetFPS(30);
     Color text_color = WHITE;
 
     RoundGauge tachometer(
@@ -68,9 +78,9 @@ int main() {
         SCREEN_WIDTH-oil_press_gauge.x, oil_press_gauge.y,
         150.0f,
         3,
-        4,
-        {0.0f, 8.0f, 14.0f, 18.0f, 24.0f},
-        {CRIT, WARN, OK, WARN},
+        5,
+        {0.0f, 8.0f, 11.0f, 15.0f, 18.0f, 20.0f},
+        {CRIT, WARN, OK, WARN, CRIT},
         font
     );
     RoundGauge water_temp_gauge(
@@ -102,7 +112,7 @@ int main() {
         VERTICAL,
         3,
         3,
-        {0.0f, 0.15f, 0.3f, 1.0f},
+        {0.0f, 1.5f, 3.0f, 12.0f},
         {CRIT, WARN, OK}
     );
 
@@ -116,13 +126,13 @@ int main() {
     gauges.push_back(&speedometer);
     gauges.push_back(&fuel_qty_gauge);
 
-    float oil_press = 30.0f;
-    float oil_temp = 100.0f;
-    float water_press = 10.0f;
-    float water_temp = 100.0f;
+    float oil_press = 0.0f;
+    float oil_temp = 0.0f;
+    float water_press = 0.0f;
+    float water_temp = 0.0f;
     float rpm = 0.0f;
     float mph = 0.0f;
-    float fuel_qty = 1.0f;
+    float fuel_qty = 0.0f;
 #ifdef TEST
     float oil_press_inc = 0.1f;
     float oil_temp_inc = 0.03f;
@@ -131,15 +141,10 @@ int main() {
     float rpm_inc = 1.0f;
     float mph_inc = 0.3f;
     float fuel_qty_inc = -0.0003f;
-#else
-    int fd;
-    if ((fd=serialOpen("/dev/ttyUSB0", 921600)) < 0) {
-        fprintf(stderr, "Unable to open serial device: %s\n", strerror(errno));
-        //return 1;
-    }
 #endif
 
     time_t start_time = time(NULL);
+
     while (!WindowShouldClose() && time(NULL) < start_time + 60) {
 
 #ifdef TEST
@@ -172,43 +177,55 @@ int main() {
         if (fuel_qty >= fuel_qty_gauge.get_max() || fuel_qty <= fuel_qty_gauge.get_min()) {
             fuel_qty_inc *= -1;
         }
-#else
-        while(serialDataAvail(fd)) {
-            std::string serial_string, parameter_value_str;
-            do {
-                serial_string.push_back(serialGetchar(fd));
-            } while (serial_string.back() != ':' && serialDataAvail(fd));
-            // last character in serial_str is now ':'. The next character, then, is the first of the value for the parameter.
-            do {
-                parameter_value_str.push_back(serialGetchar(fd));
-            } while (parameter_value_str.back() != '\n' && serialDataAvail(fd));
-            // last character is now '\n'; delete it to get just the number
-            parameter_value_str.pop_back();
-            try {
-                int parameter_value = std::stoi(parameter_value_str);
 
-                if (serial_string == "RPM:") {
-                    rpm = parameter_value;
-                } else if (serial_string == "OP10:") {
-                    oil_press = parameter_value / 10.0f;
-                } else if (serial_string == "OT10:") {
-                    oil_temp = parameter_value / 10.0f;
-                } else if (serial_string == "WP10:") {
-                    water_press = parameter_value / 10.0f;
-                } else if (serial_string == "WT10:") {
-                    water_temp = parameter_value / 10.0f;
-                } else {
-                    fprintf(stderr, "Unexpected serial parameter name \"%s\"\n", serial_string);
-                }
-            } catch (std::invalid_argument e) {
-                fprintf(stderr, "An exception occurred: %s; parameter_value_str \"%s\"\n", e.what(), parameter_value_str);
+#else
+
+        zmqpp::message message;
+
+        int message_count = 0;
+        while (socket.receive(message, true)) {
+            std::string text;
+            message >> text;
+#ifdef DEBUG
+            std::cout << text << '\n';
+#endif
+            std::string param_name;
+            float param_value;
+            int index = text.find(':');
+            param_name = text.substr(0, index);
+            param_value = std::stof(text.substr(index+1));
+            message_count++;
+
+            if (param_name == "OP") {
+                oil_press = param_value;
+            } else if (param_name == "OT") {
+                oil_temp = param_value;
+            } else if (param_name == "WP") {
+                water_press = param_value;
+            } else if (param_name == "WT") {
+                water_temp = param_value;
+            } else if (param_name == "RPM") {
+                rpm = param_value;
+            } else if (param_name == "MPH") {
+                mph = param_value;
+            } else if (param_name == "FUEL") {
+                fuel_qty = param_value;
+            } else {
+                std::cout << "Unknown parameter: " << param_name << '\n';
             }
+
         }
+#ifdef DEBUG
+        if (message_count == 0) {
+            std::cout << "No message received.\n";
+        }
+#endif
+
 #endif
 
         BeginDrawing();
         ClearBackground(BLACK);
-#ifdef DEBUG
+#ifdef DEBUG_FPS
         DrawFPS(200, 20);
 #endif
 
@@ -282,9 +299,6 @@ int main() {
 
         EndDrawing();
     }
-#ifndef TEST
-    serialClose(fd); // close serial connection to the Arduino
-#endif
     UnloadFont(font);
     CloseWindow();
     return 0;
