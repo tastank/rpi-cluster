@@ -1,10 +1,7 @@
 
 #include "RectGauge.h"
 
-#include <float.h>
-#include <stdlib.h>
-#include <stdio.h>
-
+#include <cfloat>
 #include <ctime>
 #include <initializer_list>
 #include <vector>

@@ -1,15 +1,13 @@
-#include <float.h>
-#include <stdlib.h>
-#include <stdio.h>
 
+#include "DigitalGauge.h"
+
+#include <cfloat>
 #include <ctime>
 #include <initializer_list>
 #include <vector>
 #include <string>
 
 #include <raylib.h>
-
-#include "DigitalGauge.h"
 
 #include "RaylibHelper.h"
 

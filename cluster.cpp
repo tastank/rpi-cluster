@@ -1,11 +1,4 @@
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
 #include <ctime>
-#include <unistd.h>
-#include <errno.h>
-#include <stdexcept>
-#include <fstream>
 #include <iostream>
 #include <string>
 
