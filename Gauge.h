@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-#include <VG/openvg.h>
+#include <raylib.h>
 
 #ifndef GAUGE_H
 #define GAUGE_H
@@ -24,7 +24,7 @@ protected:
     std::string name;
     float value;
 public:
-    static void get_color(State, VGfloat color[4]);
+    static Color get_color(State);
     float x, y;
     float get_value();
     void set_value(float);

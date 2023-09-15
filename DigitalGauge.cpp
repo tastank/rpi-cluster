@@ -7,15 +7,13 @@
 #include <vector>
 #include <string>
 
-#include <VG/openvg.h>
-#include <VG/vgu.h>
-#include <fontinfo.h>
-#include <shapes.h>
+#include <raylib.h>
 
 #include "DigitalGauge.h"
-#include "OpenVGHelper.h"
 
-DigitalGauge::DigitalGauge(const char *name, int x, int y, int size, int numdigits, int numranges, std::initializer_list<float> bounds, std::initializer_list<State> states) {
+#include "RaylibHelper.h"
+
+DigitalGauge::DigitalGauge(const char *name, int x, int y, int size, int numdigits, int numranges, std::initializer_list<float> bounds, std::initializer_list<State> states, Font font) {
     this->name = name;
     std::vector<float> bounds_vector{bounds};
     std::vector<State> states_vector{states};
@@ -44,9 +42,7 @@ DigitalGauge::DigitalGauge(const char *name, int x, int y, int size, int numdigi
     this->ranges = ranges;
     this->min = min;
     this->max = max;
-    // TODO Parameterize these angles
-    this->start_angle = 270.0f;
-    this->end_angle = 0.0f;
+    this->font = font;
 }
 
 void DigitalGauge::draw() {
@@ -55,7 +51,13 @@ void DigitalGauge::draw() {
     // TODO protect against buffer overflows!
     sprintf(value_buf, "%*.0f", num_digits, value);
     // TODO change color for WARN/CRIT states
-    Fill(255, 255, 255, 1);
-    TextActualMid(x, y, value_buf, MonoTypeface, get_max_text_size(value_buf, MonoTypeface, size));
+    float text_size = get_max_text_size(value_buf, font, size);
+
+    Color color = WHITE;
+    if (get_state() != OK) {
+        Color color = get_color(get_state());
+    }
+
+    DrawTextExAlign(font, value_buf, (Vector2){x, y}, text_size, 0, color, CENTER, MIDDLE);
 }
 

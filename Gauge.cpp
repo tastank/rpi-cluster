@@ -3,8 +3,7 @@
 
 #include <string>
 
-#include <VG/openvg.h>
-#include <shapes.h>
+#include <raylib.h>
 
 float Gauge::get_min() {
     return min;
@@ -24,16 +23,16 @@ const char *Gauge::get_name() {
     return name.c_str();
 }
 
-void Gauge::get_color(State state, VGfloat color[4]) {
+Color Gauge::get_color(State state) {
     if (state == OK) {
-        RGB(0, 140, 32, color);
+        return (Color) {0, 140, 32, 255};
     } else if (state == WARN) {
-        RGB(200, 200, 0, color);
+        return (Color) {200, 200, 0, 255};
     } else if (state == CRIT) {
-        RGB(255, 0, 0, color);
-    } else {
-        RGB(0, 255, 255, color);
+        return (Color) {255, 0, 0, 255};
     }
+    // default
+    return (Color) {0, 255, 255, 255};
 }
 
 State Gauge::get_state() {

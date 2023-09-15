@@ -5,22 +5,41 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdexcept>
+#include <fstream>
+#include <iostream>
 #include <string>
-#include <VG/openvg.h>
-#include <VG/vgu.h>
-#include <fontinfo.h>
-#include <shapes.h>
 
-#include <wiringSerial.h>
+#include <raylib.h>
+
+#include <zmqpp/zmqpp.hpp>
 
 #include "DigitalGauge.h"
+#include "RectGauge.h"
 #include "RoundGauge.h"
-#include "OpenVGHelper.h"
+#include "RaylibHelper.h"
+
+//#define DEBUG
+#define DEBUG_FPS
 
 int main() {
-    int width, height;
-    char *s;
-    init(&width, &height);                   // Graphics initialization
+
+    const std::string endpoint = "tcp://*:9961";
+    zmqpp::context context;
+    zmqpp::socket_type type = zmqpp::socket_type::pull;
+    zmqpp::socket socket(context, type);
+
+    socket.bind(endpoint);
+
+    const int SCREEN_WIDTH = 1024;
+    const int SCREEN_HEIGHT = 600;
+
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "");
+
+    Font font = LoadFontEx("/home/pi/rpi-cluster/resources/fonts/SimplyMono-Bold.ttf", 144.0f, NULL, 0);
+    //Font font = LoadFont("resources/fonts/SimplyMono-Bold.ttf");
+    SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR);
+    SetTargetFPS(30);
+    Color text_color = WHITE;
 
     RoundGauge tachometer(
         "RPM",
@@ -29,7 +48,8 @@ int main() {
         4,
         4,
         {0.0f, 1500.0f, 5000.0f, 6000.0f, 7500.0f},
-        {WARN, OK, WARN, CRIT}
+        {WARN, OK, WARN, CRIT},
+        font
     );
     RoundGauge oil_press_gauge(
         "OIL PRESS",
@@ -38,26 +58,29 @@ int main() {
         3,
         4,
         {0.0f, 10.0f, 20.0f, 80.0f, 100.0f},
-        {CRIT, WARN, OK, WARN}
+        {CRIT, WARN, OK, WARN},
+        font
     );
     RoundGauge oil_temp_gauge(
         "OIL TEMP",
         // keep everything nice and aligned
-        oil_press_gauge.x, height-oil_press_gauge.y,
+        oil_press_gauge.x, SCREEN_HEIGHT-oil_press_gauge.y,
         150.0f,
         3,
         4,
-        {0.0f, 150.0f, 200.0f, 230.0f, 300.0f},
-        {WARN, OK, WARN, CRIT}
+        {0.0f, 200.0f, 240.0f, 260.0f, 330.0f},
+        {WARN, OK, WARN, CRIT},
+        font
     );
     RoundGauge water_press_gauge(
         "WATER PRESS",
-        width-oil_press_gauge.x, oil_press_gauge.y,
+        SCREEN_WIDTH-oil_press_gauge.x, oil_press_gauge.y,
         150.0f,
         3,
-        4,
-        {0.0f, 10.0f, 20.0f, 80.0f, 100.0f},
-        {CRIT, WARN, OK, WARN}
+        5,
+        {0.0f, 8.0f, 11.0f, 15.0f, 18.0f, 20.0f},
+        {CRIT, WARN, OK, WARN, CRIT},
+        font
     );
     RoundGauge water_temp_gauge(
         "WATER TEMP",
@@ -66,18 +89,32 @@ int main() {
         3,
         4,
         {0.0f, 140.0f, 200.0f, 220.0f, 250.0f},
-        {WARN, OK, WARN, CRIT}
+        {WARN, OK, WARN, CRIT},
+        font
     );
 
     DigitalGauge speedometer(
         "MPH",
-        512.0f, 325.0f,
+        512.0f, 275.0f,
         120.0f,
-        1,
+        3,
         1,
         {0.0f, 120.0f},
-        {OK}
+        {OK},
+        font
+
     );
+    RectGauge fuel_qty_gauge(
+        "FUEL",
+        220, 300,
+        (Vector2) {60.0f, 400.0f},
+        VERTICAL,
+        3,
+        3,
+        {0.0f, 1.5f, 3.0f, 12.0f},
+        {CRIT, WARN, OK}
+    );
+
 
     std::vector<Gauge*> gauges;
     gauges.push_back(&tachometer);
@@ -86,67 +123,75 @@ int main() {
     gauges.push_back(&water_press_gauge);
     gauges.push_back(&water_temp_gauge);
     gauges.push_back(&speedometer);
+    gauges.push_back(&fuel_qty_gauge);
 
     float oil_press = 0.0f;
     float oil_temp = 0.0f;
     float water_press = 0.0f;
     float water_temp = 0.0f;
     float rpm = 0.0f;
-    float mph = 100.0f;
-
-    int fd;
-    if ((fd=serialOpen("/dev/ttyUSB0", 921600)) < 0) {
-        fprintf(stderr, "Unable to open serial device: %s\n", strerror(errno));
-        return 1;
-    }
+    float mph = -1.0f;
+    float fuel_qty = 0.0f;
 
     time_t start_time = time(NULL);
-    while (time(NULL) < start_time + 60) {
 
-        while(serialDataAvail(fd)) {
-            std::string serial_string, parameter_value_str;
-            do {
-                serial_string.push_back(serialGetchar(fd));
-            } while (serial_string.back() != ':' && serialDataAvail(fd));
-            // last character in serial_str is now ':'. The next character, then, is the first of the value for the parameter.
-            do {
-                parameter_value_str.push_back(serialGetchar(fd));
-            } while (parameter_value_str.back() != '\n' && serialDataAvail(fd));
-            // last character is now '\n'; delete it to get just the number
-            parameter_value_str.pop_back();
-            try {
-                int parameter_value = std::stoi(parameter_value_str);
+    while (!WindowShouldClose() && time(NULL) < start_time + 60) {
 
-                if (serial_string == "RPM:") {
-                    rpm = parameter_value;
-                } else if (serial_string == "OP10:") {
-                    oil_press = parameter_value / 10.0f;
-                } else if (serial_string == "OT10:") {
-                    oil_temp = parameter_value / 10.0f;
-                } else if (serial_string == "WP10:") {
-                    water_press = parameter_value / 10.0f;
-                } else if (serial_string == "WT10:") {
-                    water_temp = parameter_value / 10.0f;
-                } else {
-                    fprintf(stderr, "Unexpected serial parameter name \"%s\"\n", serial_string);
-                }
-            } catch (std::invalid_argument e) {
-                fprintf(stderr, "An exception occurred: %s; parameter_value_str \"%s\"\n", e.what(), parameter_value_str);
+        zmqpp::message message;
+
+        int message_count = 0;
+        while (socket.receive(message, true)) {
+            std::string text;
+            message >> text;
+#ifdef DEBUG
+            std::cout << text << '\n';
+#endif
+            std::string param_name;
+            float param_value;
+            int index = text.find(':');
+            param_name = text.substr(0, index);
+            param_value = std::stof(text.substr(index+1));
+            message_count++;
+
+            if (param_name == "OP") {
+                oil_press = param_value;
+            } else if (param_name == "OT") {
+                oil_temp = param_value;
+            } else if (param_name == "WP") {
+                water_press = param_value;
+            } else if (param_name == "WT") {
+                water_temp = param_value;
+            } else if (param_name == "RPM") {
+                rpm = param_value;
+            } else if (param_name == "MPH") {
+                mph = param_value;
+            } else if (param_name == "FUEL") {
+                fuel_qty = param_value;
+            } else {
+                std::cout << "Unknown parameter: " << param_name << '\n';
             }
+
         }
+#ifdef DEBUG
+        if (message_count == 0) {
+            std::cout << "No message received.\n";
+        }
+#endif
 
-        Start(width, height);                   // Start the picture
-        Background(0, 0, 0);                   // Black background
+        BeginDrawing();
+        ClearBackground(BLACK);
+#ifdef DEBUG_FPS
+        DrawFPS(200, 20);
+#endif
 
-        float crit_label_x = width/2 + 20;
-        float crit_label_y = height/2 - 150;
+        Vector2 crit_label_pos = {tachometer.x + 20, tachometer.y + 120};
         // set background if any state is CRIT
         bool black_text = false;
         for (Gauge *gauge : gauges) {
             State state = gauge->get_state();
             if (gauge->get_state() == CRIT) {
                 if (time(NULL) % 2) {
-                    Background(150, 0, 0);
+                    ClearBackground(MAROON);
                     black_text = true;
                     break;
                 }
@@ -157,14 +202,13 @@ int main() {
             State state = gauge->get_state();
             if (gauge->get_state() == CRIT) {
                 if (black_text) {
-                    Fill(0, 0, 0, 1);
+                    text_color = BLACK;
                 }else {
-                    VGfloat color[4];
-                    gauge->get_color(CRIT, color);
-                    setfill(color);
+                    text_color = gauge->get_color(CRIT);
                 }
-                Text(crit_label_x, crit_label_y, gauge->get_name(), MonoTypeface, 36.0f);
-                crit_label_y -= 50.0f;
+                //TODO set font size more intelligently
+                DrawTextEx(font, gauge->get_name(), crit_label_pos, 36.0f, 0, text_color);
+                crit_label_pos.y += 40.0f;
             }
 
         }
@@ -174,23 +218,23 @@ int main() {
         /*
         Stroke(255, 255, 255, 1);
         StrokeWidth(1.0f);
-        Line(0, 0, width, height);
-        Line(0, height, width, 0);
-        Line(width/2.0f, 0, width/2.0f, height);
-        Line(0, height/2.0f, width, height/2.0f);
+        Line(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+        Line(0, SCREEN_HEIGHT, SCREEN_WIDTH, 0);
+        Line(SCREEN_WIDTH/2.0f, 0, SCREEN_WIDTH/2.0f, SCREEN_HEIGHT);
+        Line(0, SCREEN_HEIGHT/2.0f, SCREEN_WIDTH, SCREEN_HEIGHT/2.0f);
         */
 
         // Labels
 #define MAJOR_LABEL_SIZE 36.0f
 #define MINOR_LABEL_SIZE 18.0f
-        Fill(255, 255, 255, 1);
-        TextActualMid(oil_press_gauge.x, height/2.0f, "OIL", MonoTypeface, MAJOR_LABEL_SIZE);
-        TextActualMid(water_press_gauge.x, height/2.0f, "WATER", MonoTypeface, MAJOR_LABEL_SIZE);
 
-        TextActualMid(oil_press_gauge.x, oil_press_gauge.y+oil_press_gauge.size/2.0f + 30.0f, "PRESS", MonoTypeface, MINOR_LABEL_SIZE);
-        TextActualMid(oil_temp_gauge.x, oil_temp_gauge.y-oil_temp_gauge.size/2.0f - 30.0f, "TEMP", MonoTypeface, MINOR_LABEL_SIZE);
-        TextActualMid(water_press_gauge.x, water_press_gauge.y+water_press_gauge.size/2.0f + 30.0f, "PRESS", MonoTypeface, MINOR_LABEL_SIZE);
-        TextActualMid(water_temp_gauge.x, water_temp_gauge.y-water_temp_gauge.size/2.0f - 30.0f, "TEMP", MonoTypeface, MINOR_LABEL_SIZE);
+        DrawTextExAlign(font, "OIL", {oil_press_gauge.x, SCREEN_HEIGHT/2}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawPixel(oil_press_gauge.x, SCREEN_HEIGHT/2, MAGENTA);
+        DrawTextExAlign(font, "WATER", {water_press_gauge.x, SCREEN_HEIGHT/2}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "PRESS", {oil_press_gauge.x, oil_press_gauge.y+oil_press_gauge.size/2+30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "TEMP", {oil_press_gauge.x, oil_temp_gauge.y-oil_temp_gauge.size/2-30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "PRESS", {water_press_gauge.x, water_press_gauge.y+water_press_gauge.size/2+30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "TEMP", {water_press_gauge.x, water_temp_gauge.y-water_temp_gauge.size/2-30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
 
         tachometer.set_value(rpm);
         oil_press_gauge.set_value(oil_press);
@@ -198,6 +242,7 @@ int main() {
         water_press_gauge.set_value(water_press);
         water_temp_gauge.set_value(water_temp);
         speedometer.set_value(mph);
+        fuel_qty_gauge.set_value(fuel_qty);
 
         tachometer.draw();
         oil_press_gauge.draw();
@@ -205,12 +250,12 @@ int main() {
         water_press_gauge.draw();
         water_temp_gauge.draw();
         speedometer.draw();
+        fuel_qty_gauge.draw();
 
-        End();                           // End the picture
+        EndDrawing();
     }
-
-    finish();                       // Graphics cleanup
-    serialClose(fd); // close serial connection to the Arduino
+    UnloadFont(font);
+    CloseWindow();
     return 0;
 }
 

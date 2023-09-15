@@ -1,19 +1,17 @@
 
+#include "Gauge.h"
+
 #include <initializer_list>
 
-#include <VG/openvg.h>
-#include <VG/vgu.h>
-#include <fontinfo.h>
-#include <shapes.h>
-
-#include "Gauge.h"
+#include <raylib.h>
 
 class DigitalGauge : public Gauge {
     float start_angle, end_angle;
-    float size; // TODO Should probably be private
+    float size;
+    Font font;
 
 public:
-    DigitalGauge(const char *name, int x, int y, int size, int numdigits, int numranges, std::initializer_list<float> bounds, std::initializer_list<State> states);
+    DigitalGauge(const char *name, int x, int y, int size, int numdigits, int numranges, std::initializer_list<float> bounds, std::initializer_list<State> states, Font font);
     void draw();
 };
 
