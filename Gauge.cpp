@@ -39,6 +39,10 @@ Color Gauge::get_color(State state) {
 }
 
 State Gauge::get_state() {
+    if (std::time(NULL) - last_updated_timestamp > DATA_TIMEOUT) {
+        // data is stale. There should probably be another state for that. For now, use CRIT
+        return STALE;
+    }
     State current_state;
     bool state_found = false;
     for (int c = 0; c < num_ranges; c++) {

@@ -10,7 +10,7 @@
 #define DATA_TIMEOUT 2 // seconds until the data is considered stale and no longer useful. This should probably be defined per-gauge, but this simplifies things for now.
 #define BAD_DATA_LINE_THICKNESS 4.0f
 
-typedef enum State {OK, WARN, CRIT} State;
+typedef enum State {OK, WARN, CRIT, STALE} State;
 
 typedef struct Range {
     State state;

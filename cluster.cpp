@@ -200,7 +200,7 @@ int main() {
 
         for (Gauge *gauge : gauges) {
             State state = gauge->get_state();
-            if (gauge->get_state() == CRIT) {
+            if (gauge->get_state() == CRIT || gauge->get_state() == STALE) {
                 if (black_text) {
                     text_color = BLACK;
                 }else {
