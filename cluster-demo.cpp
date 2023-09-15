@@ -20,7 +20,6 @@
 
 //#define DEBUG
 #define DEBUG_FPS
-//#define TEST
 
 int main() {
 
@@ -131,54 +130,12 @@ int main() {
     float water_press = 0.0f;
     float water_temp = 0.0f;
     float rpm = 0.0f;
-    float mph = 0.0f;
+    float mph = -1.0f;
     float fuel_qty = 0.0f;
-#ifdef TEST
-    float oil_press_inc = 0.1f;
-    float oil_temp_inc = 0.03f;
-    float water_press_inc = 0.01f;
-    float water_temp_inc = 0.03f;
-    float rpm_inc = 1.0f;
-    float mph_inc = 0.3f;
-    float fuel_qty_inc = -0.0003f;
-#endif
 
     time_t start_time = time(NULL);
 
     while (!WindowShouldClose() && time(NULL) < start_time + 60) {
-
-#ifdef TEST
-        rpm += rpm_inc;
-        oil_press += oil_press_inc;
-        oil_temp += oil_temp_inc;
-        water_press += water_press_inc;
-        water_temp += water_temp_inc;
-        mph += mph_inc;
-        fuel_qty += fuel_qty_inc;
-
-        if (rpm >= tachometer.get_max() || rpm <= tachometer.get_min()) {
-            rpm_inc *= -1;
-        }
-        if (oil_press >= oil_press_gauge.get_max() || oil_press <= oil_press_gauge.get_min()) {
-            oil_press_inc *= -1;
-        }
-        if (oil_temp >= oil_temp_gauge.get_max() || oil_temp <= oil_temp_gauge.get_min()) {
-            oil_temp_inc *= -1;
-        }
-        if (water_temp >= water_temp_gauge.get_max() || water_temp <= water_temp_gauge.get_min()) {
-            water_temp_inc *= -1;
-        }
-        if (water_press >= water_press_gauge.get_max() || water_press <= water_press_gauge.get_min()) {
-            water_press_inc *= -1;
-        }
-        if (mph >= speedometer.get_max() || mph <= speedometer.get_min()) {
-            mph_inc *= -1;
-        }
-        if (fuel_qty >= fuel_qty_gauge.get_max() || fuel_qty <= fuel_qty_gauge.get_min()) {
-            fuel_qty_inc *= -1;
-        }
-
-#else
 
         zmqpp::message message;
 
@@ -219,8 +176,6 @@ int main() {
         if (message_count == 0) {
             std::cout << "No message received.\n";
         }
-#endif
-
 #endif
 
         BeginDrawing();
