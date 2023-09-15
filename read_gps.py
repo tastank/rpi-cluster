@@ -14,6 +14,14 @@ _serial_gps = None
 
 debug = 0
 
+def debug_enable():
+    global debug
+    debug = 1
+
+def debug_disable():
+    global debug
+    debug = 0
+
 def debug_print(string, level=1):
     if debug >= level:
         print(string)
@@ -86,9 +94,18 @@ def get_position_data(blocking=True):
 
         latitude = nmea_coords_to_degrees(raw_lat)
         longitude = nmea_coords_to_degrees(raw_lon)
-        msl_altitude = float(raw_msl_alt)
+        try:
+            # TODO does this not lead to scope problems?
+            msl_altitude = float(raw_msl_alt)
+        except ValueError:
+            # sometimes raw_msl_alt is "". Don't break if that happens.
+            msl_altitude = None
         altitude_unit = raw_alt_unit.lower()
-        geoid_separation = float(raw_geoid_separation)
+        try:
+            geoid_separation = float(raw_geoid_separation)
+        except ValueError:
+            # See above re raw_msl_alt. I haven't seen this happen with raw_geoid_separation, but I wouldn't be surprised.
+            geoid_separation = None
         geoid_sep_unit = raw_geoid_sep_unit.lower()
         quality = int(raw_quality)
         num_sv = int(raw_num_sv)
@@ -133,21 +150,33 @@ def get_position_data(blocking=True):
         # TODO handle other NMEA messages and unsupported strings
         return {}
 
-def setup_gps(serial_device):
+def setup_gps(serial_port):
+    debug_print("Setting up serial GPS device on {}...".format(serial_port))
     global _serial_gps
-    ser = serial.Serial(serial_device, baudrate=9600, timeout=0.5)
-    ser.reset_input_buffer()
+
+    debug_print(" Initializing device...")
+    ser = serial.Serial(serial_port, baudrate=9600, timeout=0.5)
     # TODO add support for setting the baud/sample rate to whatever you want and generating the command strings
+
+    debug_print(" Setting GPS baudrate to 57600")
     ser.write(b"$PMTK251,57600*2C\r\n")
     ser.close()
-    _serial_gps = serial.Serial(serial_device, baudrate = 57600, timeout = 0.5)
     time.sleep(0.1)
-    _serial_gps.reset_input_buffer()
-    # make sure the gps sample rate command succeeds
-    while _serial_gps.readline() != b"$PMTK001,220,3*30\r\n":
+
+    _serial_gps = serial.Serial(serial_port, baudrate = 57600, timeout = 0.5)
+    debug_print(" Attempting to set sample rate...")
+    gps_data = None
+    # make sure the gps sample rate command succeeds. For some reason using _serial_gps.reset_output_buffer() immediately before this doesn't ensure there won't be other messages in the queue, so just keep sending the command until the success response is received.
+    while gps_data != b"$PMTK001,220,3*30\r\n":
         _serial_gps.write(b"$PMTK220,200*2C\r\n")
         _serial_gps.write(b"$PMTK220,100*2F\r\n")
         gps_data = _serial_gps.readline()
+        try:
+            debug_print("  Response: {}".format(gps_data.decode("utf-8")))
+        except UnicodeDecodeError as e:
+            # There may be some corrupted data left from the baudrate change. Again, using reset_output_buffer() does not always clear that. The next read will succeed.
+            debug_print(e)
+    debug_print("Setup complete.")
 
 if __name__ == "__main__":
     start = time.time()
@@ -161,7 +190,7 @@ if __name__ == "__main__":
 
     debug_print("Application started!")
 
-    setup_gps(args.serial_device)
+    setup_gps(args.serial_port)
 
     current_data_cache = dict()
     timestamp = 0

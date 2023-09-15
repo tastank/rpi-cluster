@@ -1,3 +1,4 @@
+import serial
 import time
 import zmq
 
@@ -39,8 +40,44 @@ context = zmq.Context()
 socket = context.socket(zmq.PUSH)
 socket.connect("tcp://localhost:9961")
 
-# TODO figure out what port the GPS module is connected to and use that. It might not be USB0.
-read_gps.setup_gps("/dev/ttyUSB0")
+ttyUSB0 = serial.Serial("/dev/ttyUSB0", baudrate=921600, timeout=0.5)
+ttyUSB1 = serial.Serial("/dev/ttyUSB1", baudrate=921600, timeout=0.5)
+
+arduino_port = None
+gps_port = None
+
+print("Attempting to determine which serial device is which")
+while arduino_port is None:
+    data_0 = None
+    data_1 = None
+    print("Reading serial response")
+    # Use read() instead of readline() as the two devices will not use the same baudrate and \n will never be found using the wrong baudrate.
+    # We know the Arduino will be set to 921600, but the GPS may be 9600 or 57600 depending on whether it has been initialized already, so look for the Arduino.
+    try:
+        data_0 = ttyUSB0.read(1024).decode("utf-8")
+        print("ttyUSB0: {}".format(data_0))
+    except:
+        pass
+    try:
+        data_1 = ttyUSB1.read(1024).decode("utf-8")
+        print("ttyUSB1: {}".format(data_1))
+    except:
+        pass
+    if data_0 is not None and "OT10" in data_0:
+        print("Found OT10 in /dev/ttyUSB0")
+        arduino_port = "/dev/ttyUSB0"
+        gps_port = "/dev/ttyUSB1"
+    elif data_1 is not None and "OT10" in data_1:
+        print("Found OT10 in /dev/ttyUSB1")
+        arduino_port = "/dev/ttyUSB1"
+        gps_port = "/dev/ttyUSB0"
+    time.sleep(0.1)
+
+ttyUSB0.close()
+ttyUSB1.close()
+
+read_gps.debug_enable()
+read_gps.setup_gps(gps_port)
 
 loops = 0
 
