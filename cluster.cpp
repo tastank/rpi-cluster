@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <time.h>
+#include <ctime>
 #include <unistd.h>
 #include <errno.h>
 #include <stdexcept>
@@ -125,17 +125,17 @@ int main() {
     gauges.push_back(&speedometer);
     gauges.push_back(&fuel_qty_gauge);
 
-    float oil_press = 0.0f;
-    float oil_temp = 0.0f;
-    float water_press = 0.0f;
-    float water_temp = 0.0f;
-    float rpm = 0.0f;
-    float mph = -1.0f;
-    float fuel_qty = 0.0f;
+    float oil_press;
+    float oil_temp;
+    float water_press;
+    float water_temp;
+    float rpm;
+    float mph;
+    float fuel_qty;
 
-    time_t start_time = time(NULL);
+    time_t start_time = std::time(NULL);
 
-    while (!WindowShouldClose() && time(NULL) < start_time + 60) {
+    while (!WindowShouldClose() && std::time(NULL) < start_time + 60) {
 
         zmqpp::message message;
 
@@ -155,18 +155,25 @@ int main() {
 
             if (param_name == "OP") {
                 oil_press = param_value;
+                oil_press_gauge.set_value(oil_press);
             } else if (param_name == "OT") {
                 oil_temp = param_value;
+                oil_temp_gauge.set_value(oil_temp);
             } else if (param_name == "WP") {
                 water_press = param_value;
+                water_press_gauge.set_value(water_press);
             } else if (param_name == "WT") {
                 water_temp = param_value;
+                water_temp_gauge.set_value(water_temp);
             } else if (param_name == "RPM") {
                 rpm = param_value;
+                tachometer.set_value(rpm);
             } else if (param_name == "MPH") {
                 mph = param_value;
+                speedometer.set_value(mph);
             } else if (param_name == "FUEL") {
                 fuel_qty = param_value;
+                fuel_qty_gauge.set_value(fuel_qty);
             } else {
                 std::cout << "Unknown parameter: " << param_name << '\n';
             }
@@ -190,7 +197,7 @@ int main() {
         for (Gauge *gauge : gauges) {
             State state = gauge->get_state();
             if (gauge->get_state() == CRIT) {
-                if (time(NULL) % 2) {
+                if (std::time(NULL) % 2) {
                     ClearBackground(MAROON);
                     black_text = true;
                     break;
@@ -236,13 +243,6 @@ int main() {
         DrawTextExAlign(font, "PRESS", {water_press_gauge.x, water_press_gauge.y+water_press_gauge.size/2+30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
         DrawTextExAlign(font, "TEMP", {water_press_gauge.x, water_temp_gauge.y-water_temp_gauge.size/2-30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
 
-        tachometer.set_value(rpm);
-        oil_press_gauge.set_value(oil_press);
-        oil_temp_gauge.set_value(oil_temp);
-        water_press_gauge.set_value(water_press);
-        water_temp_gauge.set_value(water_temp);
-        speedometer.set_value(mph);
-        fuel_qty_gauge.set_value(fuel_qty);
 
         tachometer.draw();
         oil_press_gauge.draw();

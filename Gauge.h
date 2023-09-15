@@ -1,4 +1,4 @@
-
+#include <ctime>
 #include <string>
 #include <vector>
 
@@ -6,6 +6,9 @@
 
 #ifndef GAUGE_H
 #define GAUGE_H
+
+#define DATA_TIMEOUT 2 // seconds until the data is considered stale and no longer useful. This should probably be defined per-gauge, but this simplifies things for now.
+#define BAD_DATA_LINE_THICKNESS 4.0f
 
 typedef enum State {OK, WARN, CRIT} State;
 
@@ -17,6 +20,7 @@ typedef struct Range {
 
 class Gauge {
 protected:
+    std::time_t last_updated_timestamp = 0;
     int num_ranges;
     int num_digits;
     std::vector<Range> ranges;

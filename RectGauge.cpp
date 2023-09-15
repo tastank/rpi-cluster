@@ -4,8 +4,8 @@
 #include <float.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <time.h>
 
+#include <ctime>
 #include <initializer_list>
 #include <vector>
 #include <string>
@@ -58,10 +58,20 @@ RectGauge::RectGauge(const char *name, int x, int y, Vector2 size, Orientation o
 }
 
 void RectGauge::draw() {
-    draw_outline();
-    //draw_text_value();
-    draw_value();
-    draw_bounding_box();
+    if (std::time(NULL) - last_updated_timestamp > DATA_TIMEOUT) {
+        Vector2 ll = (Vector2) {x, y};
+        Vector2 lr = (Vector2) {x + size.x, y};
+        Vector2 ul = (Vector2) {x, y + size.y};
+        Vector2 ur = (Vector2) {x + size.x, y + size.y};
+
+        DrawLineEx(ll, ur, BAD_DATA_LINE_THICKNESS, RED);
+        DrawLineEx(lr, ul, BAD_DATA_LINE_THICKNESS, RED);
+        DrawRectangleLinesEx((Rectangle) {ll.x, ll.y, size.x, size.y}, BAD_DATA_LINE_THICKNESS, RED);
+    } else {
+        draw_outline();
+        //draw_text_value();
+        draw_value();
+    }
 
 }
 
@@ -128,9 +138,5 @@ void RectGauge::draw_outline() {
             DrawLineEx((Vector2) {x, y_max}, (Vector2) {x + size.x, y_max}, OUTLINE_STROKE_WIDTH, color);
         }
     };
-}
-
-void RectGauge::draw_bounding_box() {
-    //DrawRectangleLines(x, y, size.x, size.y, WHITE);
 }
 

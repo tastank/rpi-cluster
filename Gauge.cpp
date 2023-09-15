@@ -1,6 +1,7 @@
 
 #include "Gauge.h"
 
+#include <ctime>
 #include <string>
 
 #include <raylib.h>
@@ -15,7 +16,9 @@ float Gauge::get_max() {
 float Gauge::get_value() {
     return value;
 }
+// TODO add a last updated timestamp to determine whether we're getting updated data
 void Gauge::set_value(float value) {
+    this->last_updated_timestamp = std::time(NULL);
     this->value = value;
 }
 

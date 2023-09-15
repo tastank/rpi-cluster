@@ -4,8 +4,8 @@
 #include <float.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <time.h>
 
+#include <ctime>
 #include <initializer_list>
 #include <vector>
 #include <string>
@@ -58,16 +58,28 @@ RoundGauge::RoundGauge(const char *name, int x, int y, int size, int numdigits, 
 void RoundGauge::draw() {
     // TODO Add unit to text?
     /* I like this idea, but it blocks too much stuff. Better to have the whole background flash, probably
-    if (get_state() == CRIT && time(NULL) % 2 == 0) {
+    if (get_state() == CRIT && std::time(NULL) % 2 == 0) {
         Fill(255, 0, 0, 1);
         Stroke(255, 255, 0, 1);
         Rect(x-size/2, y-size/2, size, size);
         DrawTextExAlign(font, (char *)get_name(), (Vector2) {x, y}, get_max_text_size((char *)get_name(), font, size*0.8f), 0, WHITE, CENTER, MIDDLE);
     } else {
         */
-        draw_outline();
-        draw_text_value();
-        draw_value();
+        if (std::time(NULL) - last_updated_timestamp > DATA_TIMEOUT) {
+            // I'm not sure the names here are accurate, but it'll still draw the X I want.
+            Vector2 ll = (Vector2) {x - size/2.0f, y - size/2.0f};
+            Vector2 ul = (Vector2) {x - size/2.0f, y + size/2.0f};
+            Vector2 lr = (Vector2) {x + size/2.0f, y - size/2.0f};
+            Vector2 ur = (Vector2) {x + size/2.0f, y + size/2.0f};
+            DrawLineEx(ll, ur, BAD_DATA_LINE_THICKNESS, RED);
+            DrawLineEx(lr, ul, BAD_DATA_LINE_THICKNESS, RED);
+
+            DrawRectangleLinesEx((Rectangle) {ll.x, ll.y, size, size}, BAD_DATA_LINE_THICKNESS, RED);
+        } else {
+            draw_outline();
+            draw_text_value();
+            draw_value();
+        }
     //}
 
 }

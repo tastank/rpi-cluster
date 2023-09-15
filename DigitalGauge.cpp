@@ -1,8 +1,8 @@
 #include <float.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <time.h>
 
+#include <ctime>
 #include <initializer_list>
 #include <vector>
 #include <string>
@@ -53,11 +53,22 @@ void DigitalGauge::draw() {
     // TODO change color for WARN/CRIT states
     float text_size = get_max_text_size(value_buf, font, size);
 
-    Color color = WHITE;
-    if (get_state() != OK) {
-        Color color = get_color(get_state());
-    }
+    if (std::time(NULL) - last_updated_timestamp > DATA_TIMEOUT) {
+        Vector2 ll = (Vector2) {x - size/2.0f, y - text_size/2.0f};
+        Vector2 ul = (Vector2) {x - size/2.0f, y + text_size/2.0f};
+        Vector2 lr = (Vector2) {x + size/2.0f, y - text_size/2.0f};
+        Vector2 ur = (Vector2) {x + size/2.0f, y + text_size/2.0f};
 
-    DrawTextExAlign(font, value_buf, (Vector2){x, y}, text_size, 0, color, CENTER, MIDDLE);
+        DrawLineEx(ll, ur, BAD_DATA_LINE_THICKNESS, RED);
+        DrawLineEx(lr, ul, BAD_DATA_LINE_THICKNESS, RED);
+        DrawRectangleLinesEx((Rectangle) {ll.x, ll.y, size, text_size}, BAD_DATA_LINE_THICKNESS, RED);
+    } else {
+        Color color = WHITE;
+        if (get_state() != OK) {
+            Color color = get_color(get_state());
+        }
+
+        DrawTextExAlign(font, value_buf, (Vector2){x, y}, text_size, 0, color, CENTER, MIDDLE);
+    }
 }
 
