@@ -14,15 +14,13 @@ cmake -DPLATFORM=DRM -DOPENGL_VERSION="ES 2.0" -DPLATFORM_CPP=PLATFORM_DRM -DGRA
 #make install
 
 echo "================Installing 0MQ===================="
-apt install libzmq-dev -y
-# The rest may not be necessary?
-#cd $START_DIR
-#apt install libtool -y
-#git clone https://github.com/zeromq/libzmq.git
-#cd libzmq
-#./autogen.sh
-#./configure --with-libsodium && make && make install
-#sudo ldconfig
+cd $START_DIR
+apt install libtool libsodium-dev -y
+git clone https://github.com/zeromq/libzmq.git
+cd libzmq
+./autogen.sh
+./configure --with-libsodium && make && make install
+sudo ldconfig
 
 echo "================Installing ZMQPP==================="
 cd $START_DIR
@@ -59,17 +57,8 @@ systemctl enable $EXEC_FILE.service
 # Install PIP
 apt install python3-pip -y
 
-# Install and set up GPS libraries
-apt install gpsd gpsd-clients -y
-systemctl stop gpsd.socket
-systemctl disable gpsd.socket
-# TODO verify this is the correct tty file
-gpsd /dev/ttyUSB0 -F /var/run/gpsd.sock
-pip install gps
-
 # Install python serial communication library
 pip install pyserial
 # Install 0MQ for Python
 pip install pyzmq
 
-#apt install libsodium-dev -y
