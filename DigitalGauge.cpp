@@ -12,6 +12,10 @@
 #include "RaylibHelper.h"
 
 DigitalGauge::DigitalGauge(const char *name, int x, int y, int size, int numdigits, int numranges, std::initializer_list<float> bounds, std::initializer_list<State> states, Font font) {
+    DigitalGauge(name, x, y, size, numdigits, 0, numranges, bounds, states, font);
+}
+
+DigitalGauge::DigitalGauge(const char *name, int x, int y, int size, int numdigits, int numdecimal, int numranges, std::initializer_list<float> bounds, std::initializer_list<State> states, Font font) {
     this->name = name;
     std::vector<float> bounds_vector{bounds};
     std::vector<State> states_vector{states};
@@ -36,6 +40,7 @@ DigitalGauge::DigitalGauge(const char *name, int x, int y, int size, int numdigi
     this->y = y;
     this->size = size;
     this->num_digits = numdigits;
+    this->num_decimal = numdecimal;
     this->num_ranges = numranges;
     this->ranges = ranges;
     this->min = min;
@@ -47,7 +52,7 @@ void DigitalGauge::draw() {
     // TODO Add unit to text?
     char value_buf[80];
     // TODO protect against buffer overflows!
-    sprintf(value_buf, "%*.0f", num_digits, value);
+    sprintf(value_buf, "%*.*f", num_digits, num_decimal, value);
     // TODO change color for WARN/CRIT states
     float text_size = get_max_text_size(value_buf, font, size);
 

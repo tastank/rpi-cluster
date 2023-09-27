@@ -23,6 +23,7 @@ protected:
     std::time_t last_updated_timestamp = 0;
     int num_ranges;
     int num_digits;
+    int num_decimal;
     std::vector<Range> ranges;
     float min, max;
     std::string name;
