@@ -28,9 +28,9 @@ const char *Gauge::get_name() {
 
 Color Gauge::get_color(State state) {
     if (state == OK) {
-        return (Color) {0, 140, 32, 255};
+        return (Color) {32, 192, 64, 255};
     } else if (state == WARN) {
-        return (Color) {200, 200, 0, 255};
+        return (Color) {255, 255, 0, 255};
     } else if (state == CRIT) {
         return (Color) {255, 0, 0, 255};
     }
