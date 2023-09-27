@@ -4,7 +4,7 @@
 #include <raylib.h>
 
 void DrawTextExAlign(Font font, const char *text, Vector2 pos, float size, float spacing, Color color, HAlign h_align, VAlign v_align) {
-    Vector2 text_size = MeasureTextEx(font, text, size, 0);
+    Vector2 text_size = MeasureTextEx(font, text, size, spacing);
     Vector2 offset;
     if (h_align == LEFT) {
         offset.x = 0;
