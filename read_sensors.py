@@ -64,7 +64,7 @@ read_gps.setup_gps(gps_port)
 
 loops = 0
 
-while time.time() - start < 10:
+while time.time() - start < 60:
     try:
         gps_data = read_gps.get_position_data(blocking=False)
         if "speed_kmh" in gps_data:
@@ -95,6 +95,9 @@ while time.time() - start < 10:
                 elif name == "FUEL":
                     fuel = float(value)
                     socket.send("FUEL:{}".format(fuel).encode())
+                elif name == "VOLTS":
+                    fuel = float(value)
+                    socket.send("VOLTS:{}".format(fuel).encode())
             except ValueError:
                 print(message)
 

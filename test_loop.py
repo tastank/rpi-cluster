@@ -6,7 +6,7 @@ import zmq
 rpm_min = 0
 rpm_max = 6700
 rpm = rpm_min
-rpm_inc = 2
+rpm_inc = 8
 oil_temp_min = 0
 oil_temp_max = 270
 oil_temp = oil_temp_min
@@ -31,6 +31,10 @@ fuel_min = 0
 fuel_max = 12
 fuel = fuel_min
 fuel_inc = 0.01
+volts_min = 0
+volts_max = 15
+volts = volts_min
+volts_inc = 0.01
 
 start = time.time()
 
@@ -47,6 +51,7 @@ while time.time() - start < 60:
         socket.send("RPM:{}".format(rpm).encode())
         socket.send("MPH:{}".format(mph).encode())
         socket.send("FUEL:{}".format(fuel).encode())
+        socket.send("VOLTS:{}".format(volts).encode())
 
         rpm += rpm_inc
         oil_temp += oil_temp_inc
@@ -55,6 +60,7 @@ while time.time() - start < 60:
         water_press += water_press_inc
         mph += mph_inc
         fuel += fuel_inc
+        volts += volts_inc
 
         if rpm >= rpm_max or rpm <= rpm_min:
             rpm_inc *= -1
@@ -70,6 +76,8 @@ while time.time() - start < 60:
             mph_inc *= -1
         if fuel >= fuel_max or fuel <= fuel_min:
             fuel_inc *= -1
+        if volts >= volts_max or volts <= volts_min:
+            volts_inc *= -1
 
         time.sleep(0.01)
     except KeyboardInterrupt:

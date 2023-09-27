@@ -90,7 +90,7 @@ int main() {
         "MPH",
         512.0f, 275.0f,
         120.0f,
-        3,
+        3, 0,
         1,
         {0.0f, 120.0f},
         {OK},
@@ -107,6 +107,26 @@ int main() {
         {0.0f, 1.5f, 3.0f, 12.0f},
         {CRIT, WARN, OK}
     );
+    DigitalGauge fuel_qty_display(
+        "FUEL",
+        220, 530,
+        60.0f,
+        3, 1,
+        1,
+        {0.0f, 12.0f},
+        {OK},
+        font
+    );
+    DigitalGauge voltmeter(
+        "VOLTS",
+        1024-250, 70,
+        100.0f,
+        4, 1,
+        3,
+        {0.0f, 12.0f, 14.4f, 16.0f},
+        {CRIT, WARN, OK, CRIT},
+        font
+    );
 
 
     std::vector<Gauge*> gauges;
@@ -117,6 +137,7 @@ int main() {
     gauges.push_back(&water_temp_gauge);
     gauges.push_back(&speedometer);
     gauges.push_back(&fuel_qty_gauge);
+    gauges.push_back(&voltmeter);
 
     float oil_press;
     float oil_temp;
@@ -125,6 +146,7 @@ int main() {
     float rpm;
     float mph;
     float fuel_qty;
+    float volts;
 
     time_t start_time = std::time(NULL);
 
@@ -167,6 +189,10 @@ int main() {
             } else if (param_name == "FUEL") {
                 fuel_qty = param_value;
                 fuel_qty_gauge.set_value(fuel_qty);
+                fuel_qty_display.set_value(fuel_qty);
+            } else if (param_name == "VOLTS") {
+                volts = param_value;
+                voltmeter.set_value(volts);
             } else {
                 std::cout << "Unknown parameter: " << param_name << '\n';
             }
@@ -235,6 +261,9 @@ int main() {
         DrawTextExAlign(font, "TEMP", {oil_press_gauge.x, oil_temp_gauge.y-oil_temp_gauge.size/2-30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
         DrawTextExAlign(font, "PRESS", {water_press_gauge.x, water_press_gauge.y+water_press_gauge.size/2+30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
         DrawTextExAlign(font, "TEMP", {water_press_gauge.x, water_temp_gauge.y-water_temp_gauge.size/2-30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        // I should probably change this behavior, but to make drawing easier RectGauge changes the x and y values to one of the corners instead of the center. DigitalGauge does not, so use the digital fuel gauge for alignment.
+        DrawTextExAlign(font, "FUEL", {fuel_qty_display.x, 70.0f}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "VOLTS", {voltmeter.x, voltmeter.y + 30.0f}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
 
 
         tachometer.draw();
@@ -244,6 +273,8 @@ int main() {
         water_temp_gauge.draw();
         speedometer.draw();
         fuel_qty_gauge.draw();
+        fuel_qty_display.draw();
+        voltmeter.draw();
 
         EndDrawing();
     }
