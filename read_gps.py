@@ -89,65 +89,69 @@ def get_position_data(blocking=True):
     message = data[0:6]
     parts = data.split(",")
 
-    if (message == "$GPGGA"):
-        raw_type, raw_utc, raw_lat, raw_ns, raw_lon, raw_ew, raw_quality, raw_num_sv, raw_hdop, raw_msl_alt, raw_alt_unit, raw_geoid_separation, raw_geoid_sep_unit, reference_station_id, raw_checksum = parts
+    try:
+        if (message == "$GPGGA"):
+            raw_type, raw_utc, raw_lat, raw_ns, raw_lon, raw_ew, raw_quality, raw_num_sv, raw_hdop, raw_msl_alt, raw_alt_unit, raw_geoid_separation, raw_geoid_sep_unit, reference_station_id, raw_checksum = parts
 
-        latitude = nmea_coords_to_degrees(raw_lat)
-        longitude = nmea_coords_to_degrees(raw_lon)
-        try:
-            # TODO does this not lead to scope problems?
-            msl_altitude = float(raw_msl_alt)
-        except ValueError:
-            # sometimes raw_msl_alt is "". Don't break if that happens.
-            msl_altitude = None
-        altitude_unit = raw_alt_unit.lower()
-        try:
-            geoid_separation = float(raw_geoid_separation)
-        except ValueError:
-            # See above re raw_msl_alt. I haven't seen this happen with raw_geoid_separation, but I wouldn't be surprised.
-            geoid_separation = None
-        geoid_sep_unit = raw_geoid_sep_unit.lower()
-        quality = int(raw_quality)
-        num_sv = int(raw_num_sv)
+            latitude = nmea_coords_to_degrees(raw_lat)
+            longitude = nmea_coords_to_degrees(raw_lon)
+            try:
+                # TODO does this not lead to scope problems?
+                msl_altitude = float(raw_msl_alt)
+            except ValueError:
+                # sometimes raw_msl_alt is "". Don't break if that happens.
+                msl_altitude = None
+            altitude_unit = raw_alt_unit.lower()
+            try:
+                geoid_separation = float(raw_geoid_separation)
+            except ValueError:
+                # See above re raw_msl_alt. I haven't seen this happen with raw_geoid_separation, but I wouldn't be surprised.
+                geoid_separation = None
+            geoid_sep_unit = raw_geoid_sep_unit.lower()
+            quality = int(raw_quality)
+            num_sv = int(raw_num_sv)
 
-        # TODO make custom classes for this, maybe don't even do it in python
-        return {
-            "type": raw_type,
-            "utc": raw_utc,
-            "latitude": latitude,
-            "ns": raw_ns,
-            "longitude": longitude,
-            "ew": raw_ew,
-            "altitude": msl_altitude,
-            "altitude_unit": altitude_unit,
-            "geoid_separation": geoid_separation,
-            "geoid_separation_unit": geoid_sep_unit,
-            "quality": quality,
-            "num_sv": num_sv,
-        }
-    elif message == "$GPRMC":
-        raw_type, raw_utc, raw_status, raw_lat, raw_ns, raw_lon, raw_ew, raw_speed, raw_track, raw_date, raw_var, unknown_extra, raw_checksum = parts
+            # TODO make custom classes for this, maybe don't even do it in python
+            return {
+                "type": raw_type,
+                "utc": raw_utc,
+                "latitude": latitude,
+                "ns": raw_ns,
+                "longitude": longitude,
+                "ew": raw_ew,
+                "altitude": msl_altitude,
+                "altitude_unit": altitude_unit,
+                "geoid_separation": geoid_separation,
+                "geoid_separation_unit": geoid_sep_unit,
+                "quality": quality,
+                "num_sv": num_sv,
+            }
+        elif message == "$GPRMC":
+            raw_type, raw_utc, raw_status, raw_lat, raw_ns, raw_lon, raw_ew, raw_speed, raw_track, raw_date, raw_var, unknown_extra, raw_checksum = parts
 
-        latitude = nmea_coords_to_degrees(raw_lat)
-        longitude = nmea_coords_to_degrees(raw_lon)
-        speed = float(raw_speed)
-        track = float(raw_track),
-        date = nmea_to_iso_date(raw_date)
+            latitude = nmea_coords_to_degrees(raw_lat)
+            longitude = nmea_coords_to_degrees(raw_lon)
+            speed = float(raw_speed)
+            track = float(raw_track),
+            date = nmea_to_iso_date(raw_date)
 
-        return {
-            "type": raw_type,
-            "utc": raw_utc,
-            "latitude": latitude,
-            "ns": raw_ns,
-            "longitude": longitude,
-            "ew": raw_ew,
-            "speed_kmh": speed,
-            "track": track,
-            "date": date,
-            "status": raw_status,
-        }
-    else:
-        # TODO handle other NMEA messages and unsupported strings
+            return {
+                "type": raw_type,
+                "utc": raw_utc,
+                "latitude": latitude,
+                "ns": raw_ns,
+                "longitude": longitude,
+                "ew": raw_ew,
+                "speed_kmh": speed,
+                "track": track,
+                "date": date,
+                "status": raw_status,
+            }
+        else:
+            # TODO handle other NMEA messages and unsupported strings
+            return {}
+    except:
+        # TODO This sometimes gives a too many values to unpack error. Figure out why and handle it more intelligently.
         return {}
 
 def setup_gps(serial_port):
