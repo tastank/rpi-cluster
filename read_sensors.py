@@ -2,6 +2,7 @@
 
 import csv
 import datetime
+import os
 import serial
 import sys
 import time
@@ -33,53 +34,46 @@ context = zmq.Context()
 socket = context.socket(zmq.PUSH)
 socket.connect("tcp://localhost:9961")
 
-ttyUSB0 = None
-ttyUSB1 = None
+ttyUSBfiles = []
+ttyUSBs = []
 # We know the Arduino will be set to 921600, but the GPS may be 9600 or 57600 depending on whether it has been initialized already, so look for the Arduino.
 # There are a lot of instances of try/except:pass here; if there's an error, keep going and hope it gets fixed because the driver isn't going to pull over to debug.
-try:
-    ttyUSB0 = serial.Serial("/dev/ttyUSB0", baudrate=921600, timeout=0.5)
-except serial.serialutil.SerialException:
-    pass
-try:
-    ttyUSB1 = serial.Serial("/dev/ttyUSB1", baudrate=921600, timeout=0.5)
-except serial.serialutil.SerialException:
-    pass
+serial_device_dir = "/dev"
+filenames = os.listdir(serial_device_dir)
+for filename in filenames:
+    if "ttyUSB" in filename:
+        ttyUSBfiles.append(os.path.join(serial_device_dir, filename))
+if len(ttyUSBfiles) != 2:
+    # I genuinely don't know how to recover from this, so just stop
+    socket.send("STOP\n".encode())
+    sys.exit("Wrong number of USB serial devices: {}".format(len(ttyUSBfiles)))
+for ttyUSBfile in ttyUSBfiles:
+    try:
+        ttyUSBs.append(serial.Serial(ttyUSBfile, baudrate=921600, timeout=0.5))
+    except serial.serialutil.SerialException as e:
+        print(e)
 
 arduino = None
 gps_port = None
 
 print("Attempting to determine which serial device is which")
-while gps_port is None:
-    data_0 = None
-    data_1 = None
-    print("Reading serial response")
+while arduino is None:
     # Use read() instead of readline() as the two devices will not use the same baudrate and \n will never be found using the wrong baudrate.
-    try:
-        data_0 = ttyUSB0.read(1024).decode("utf-8")
-        print("ttyUSB0: {}".format(data_0))
-    except AttributeError:
-        pass
-    try:
-        data_1 = ttyUSB1.read(1024).decode("utf-8")
-        print("ttyUSB1: {}".format(data_1))
-    except AttributeError:
-        pass
-    if data_0 is not None and "FUEL:" in data_0:
-        print("Found FUEL: in /dev/ttyUSB0")
+    for ttyUSB in ttyUSBs:
+        try:
+            print("Reading serial response")
+            data = ttyUSB.read(1024).decode("utf-8")
+            print("{}: {}".format(ttyUSB.name, data))
+            if data is not None and "FUEL:" in data:
+                print("Found FUEL: in {}".format(ttyUSB.name))
+                arduino = ttyUSB
+        except AttributeError as e:
+            print(e)
+for ttyUSB in ttyUSBs:
+    if (ttyUSB != arduino):
         # let the GPS library handle the serial communication
-        gps_port = "/dev/ttyUSB1"
-        arduino = ttyUSB0
-        if ttyUSB1 is not None:
-            ttyUSB1.close()
-    elif data_1 is not None and "FUEL:" in data_1:
-        print("Found FUEL: in /dev/ttyUSB1")
-        gps_port = "/dev/ttyUSB0"
-        arduino = ttyUSB1
-        if ttyUSB0 is not None:
-            ttyUSB0.close()
-    time.sleep(0.1)
-
+        gps_port = ttyUSB.name
+time.sleep(0.1)
 
 try:
     read_gps.debug_enable()
