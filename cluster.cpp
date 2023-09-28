@@ -150,7 +150,7 @@ int main() {
 
     time_t start_time = std::time(NULL);
 
-    while (!WindowShouldClose() && std::time(NULL) < start_time + 60) {
+    while (!WindowShouldClose()) {
 
         zmqpp::message message;
 

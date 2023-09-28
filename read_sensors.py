@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import csv
 import datetime
 import serial
@@ -113,7 +115,7 @@ with open(output_filename, 'w', newline='') as csvfile:
     csv_writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     csv_writer.writeheader()
 
-    while time.time() - start < 60:
+    while True:
         try:
 
             if time.time() - last_log_time >= LOG_INTERVAL:
