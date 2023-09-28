@@ -158,6 +158,9 @@ int main() {
         while (socket.receive(message, true)) {
             std::string text;
             message >> text;
+            if (text == "STOP") {
+                return 0;
+            }
 #ifdef DEBUG
             std::cout << text << '\n';
 #endif
