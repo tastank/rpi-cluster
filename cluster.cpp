@@ -11,10 +11,14 @@
 #include "RoundGauge.h"
 #include "RaylibHelper.h"
 
-//#define DEBUG
+#define DEBUG
 #define DEBUG_FPS
 
 int main() {
+
+#ifdef DEBUG
+    std::cout << "Initializing zmqpp...\n";
+#endif
 
     const std::string endpoint = "tcp://*:9961";
     zmqpp::context context;
@@ -26,14 +30,29 @@ int main() {
     const int SCREEN_WIDTH = 1024;
     const int SCREEN_HEIGHT = 600;
 
+#ifdef DEBUG
+    std::cout << "Initializing Raylib window...\n";
+#endif
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "");
+#ifdef DEBUG
+    std::cout << "Finished Raylib initialization.\n";
+#endif
 
+#ifdef DEBUG
+    std::cout << "Loading font...\n";
+#endif
     Font font = LoadFontEx("/home/pi/rpi-cluster/resources/fonts/SimplyMono-Bold.ttf", 144.0f, NULL, 0);
     //Font font = LoadFont("resources/fonts/SimplyMono-Bold.ttf");
     SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR);
+#ifdef DEBUG
+    std::cout << "Setting target FPS...\n";
+#endif
     SetTargetFPS(30);
     Color text_color = WHITE;
 
+#ifdef DEBUG
+    std::cout << "Defining gauges...\n";
+#endif
     RoundGauge tachometer(
         "RPM",
         512.0f, 300.0f,
@@ -127,6 +146,9 @@ int main() {
         {CRIT, WARN, OK, CRIT},
         font
     );
+#ifdef DEBUG
+    std::cout << "Pushing gauges to vector...\n";
+#endif
 
 
     std::vector<Gauge*> gauges;
@@ -151,6 +173,9 @@ int main() {
     time_t start_time = std::time(NULL);
 
     while (!WindowShouldClose()) {
+#ifdef DEBUG
+        std::cout << "Starting loop.\n";
+#endif
 
         zmqpp::message message;
 
@@ -168,7 +193,11 @@ int main() {
             float param_value;
             int index = text.find(':');
             param_name = text.substr(0, index);
-            param_value = std::stof(text.substr(index+1));
+            try {
+                param_value = std::stof(text.substr(index+1));
+            } catch (std::invalid_argument const& e) {
+                std::cout << e.what();
+            }
             message_count++;
 
             if (param_name == "OP") {
@@ -204,8 +233,11 @@ int main() {
 #ifdef DEBUG
         if (message_count == 0) {
             std::cout << "No message received.\n";
+        } else {
+            std::cout << "Finished reading data.\n";
         }
 #endif
+
 
         BeginDrawing();
         ClearBackground(BLACK);
@@ -242,16 +274,9 @@ int main() {
 
         }
 
-
-        // TODO remove. For alignment purposes only
-        /*
-        Stroke(255, 255, 255, 1);
-        StrokeWidth(1.0f);
-        Line(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-        Line(0, SCREEN_HEIGHT, SCREEN_WIDTH, 0);
-        Line(SCREEN_WIDTH/2.0f, 0, SCREEN_WIDTH/2.0f, SCREEN_HEIGHT);
-        Line(0, SCREEN_HEIGHT/2.0f, SCREEN_WIDTH, SCREEN_HEIGHT/2.0f);
-        */
+#ifdef DEBUG
+        std::cout << "Drawing labels...\n";
+#endif
 
         // Labels
 #define MAJOR_LABEL_SIZE 36.0f
@@ -269,6 +294,9 @@ int main() {
         DrawTextExAlign(font, "VOLTS", {voltmeter.x, voltmeter.y + 30.0f}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
 
 
+#ifdef DEBUG
+        std::cout << "Drawing gauges...\n";
+#endif
         tachometer.draw();
         oil_press_gauge.draw();
         oil_temp_gauge.draw();
@@ -279,6 +307,9 @@ int main() {
         fuel_qty_display.draw();
         voltmeter.draw();
 
+#ifdef DEBUG
+        std::cout << "Finished drawing.\n";
+#endif
         EndDrawing();
     }
     UnloadFont(font);
