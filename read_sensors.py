@@ -2,6 +2,7 @@
 
 import csv
 import datetime
+import logging
 import os
 import serial
 import sys
@@ -9,6 +10,10 @@ import time
 import zmq
 
 import read_gps
+
+logging.basicConfig(filename="/home/pi/log/read_sensors_{}.log".format(int(time.time()),), format="%(asctime)s %(message)s", filemode='w')
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
 
 KMH_TO_MPH = 0.621371
 
@@ -34,6 +39,13 @@ context = zmq.Context()
 socket = context.socket(zmq.PUSH)
 socket.connect("tcp://localhost:9961")
 
+def send_zmqpp(message):
+    if "inf" not in message:
+        logger.debug(message)
+        socket.send(message.encode())
+    else:
+        logger.debug("Value is inf; skipping: {}".format(message))
+
 ttyUSBfiles = []
 ttyUSBs = []
 # We know the Arduino will be set to 921600, but the GPS may be 9600 or 57600 depending on whether it has been initialized already, so look for the Arduino.
@@ -43,32 +55,33 @@ filenames = os.listdir(serial_device_dir)
 for filename in filenames:
     if "ttyUSB" in filename:
         ttyUSBfiles.append(os.path.join(serial_device_dir, filename))
-if len(ttyUSBfiles) != 2:
+# if it's only 1, this will still function without GPS
+if len(ttyUSBfiles) > 2:
     # I genuinely don't know how to recover from this, so just stop
-    socket.send("STOP\n".encode())
+    send_zmqpp("STOP\n".encode())
     sys.exit("Wrong number of USB serial devices: {}".format(len(ttyUSBfiles)))
 for ttyUSBfile in ttyUSBfiles:
     try:
         ttyUSBs.append(serial.Serial(ttyUSBfile, baudrate=921600, timeout=0.5))
     except serial.serialutil.SerialException as e:
-        print(e)
+        logger.error(e)
 
 arduino = None
 gps_port = None
 
-print("Attempting to determine which serial device is which")
+logger.debug("Attempting to determine which serial device is which")
 while arduino is None:
     # Use read() instead of readline() as the two devices will not use the same baudrate and \n will never be found using the wrong baudrate.
     for ttyUSB in ttyUSBs:
         try:
-            print("Reading serial response")
+            logger.debug("Reading serial response")
             data = ttyUSB.read(1024).decode("utf-8")
-            print("{}: {}".format(ttyUSB.name, data))
+            logger.debug("{}: {}".format(ttyUSB.name, data))
             if data is not None and "FUEL:" in data:
-                print("Found FUEL: in {}".format(ttyUSB.name))
+                logger.debug("Found FUEL: in {}".format(ttyUSB.name))
                 arduino = ttyUSB
         except AttributeError as e:
-            print(e)
+            logger.error(e)
 for ttyUSB in ttyUSBs:
     if (ttyUSB != arduino):
         # let the GPS library handle the serial communication
@@ -111,7 +124,57 @@ with open(output_filename, 'w', newline='') as csvfile:
 
     while True:
         try:
+            try:
+                gps_data = read_gps.get_position_data(blocking=False)
+                if "speed_kmh" in gps_data:
+                    mph = gps_data["speed_kmh"] * KMH_TO_MPH
+                    send_zmqpp("MPH:{}".format(mph))
+                elif "track" in gps_data:
+                    track = gps_data["track"]
+                elif "latitude" in gps_data:
+                    latitude = gps_data["latitude"]
+                elif "longitude" in gps_data:
+                    longitude = gps_data["longitude"]
+                elif "date" in gps_data:
+                    gps_utc_date = gps_data["date"]
+                elif "utc" in gps_data:
+                    gps_utc_time = gps_data["time"]
+            except AttributeError:
+                pass
 
+            try:
+                while arduino.in_waiting > 0:
+                    try:
+                        message = arduino.readline().decode("utf-8")
+                        if "STOP" in message:
+                            send_zmqpp("STOP")
+                            sys.exit("STOP command received.")
+                        (name, value) = message.split(":")
+                        if name == "OT":
+                            oil_temp = float(value)
+                            send_zmqpp("OT:{}".format(oil_temp))
+                        elif name == "OP":
+                            oil_press = float(value)
+                            send_zmqpp("OP:{}".format(oil_press))
+                        elif name == "WT":
+                            water_temp = float(value)
+                            send_zmqpp("WT:{}".format(water_temp))
+                        elif name == "WP":
+                            water_press = float(value)
+                            send_zmqpp("WP:{}".format(water_press))
+                        elif name == "RPM":
+                            rpm = int(value)
+                            send_zmqpp("RPM:{}".format(rpm))
+                        elif name == "FUEL":
+                            fuel = float(value)
+                            send_zmqpp("FUEL:{}".format(fuel))
+                        elif name == "VOLTS":
+                            volts = float(value)
+                            send_zmqpp("VOLTS:{}".format(volts))
+                    except ValueError:
+                        logger.error(message)
+            except AttributeError:
+                pass
             if time.time() - last_log_time >= LOG_INTERVAL:
                 fields = {
                     "system_time": time.time(),
@@ -132,63 +195,12 @@ with open(output_filename, 'w', newline='') as csvfile:
                 }
                 csv_writer.writerow(fields)
 
-            try:
-                gps_data = read_gps.get_position_data(blocking=False)
-                if "speed_kmh" in gps_data:
-                    mph = gps_data["speed_kmh"] * KMH_TO_MPH
-                    socket.send("MPH:{}".format(mph).encode())
-                elif "track" in gps_data:
-                    track = gps_data["track"]
-                elif "latitude" in gps_data:
-                    latitude = gps_data["latitude"]
-                elif "longitude" in gps_data:
-                    longitude = gps_data["longitude"]
-                elif "date" in gps_data:
-                    gps_utc_date = gps_data["date"]
-                elif "utc" in gps_data:
-                    gps_utc_time = gps_data["time"]
-            except AttributeError:
-                pass
-
-            try:
-                while arduino.in_waiting > 0:
-                    try:
-                        message = arduino.readline().decode("utf-8")
-                        if "STOP" in message:
-                            socket.send("STOP".encode())
-                            sys.exit("STOP command received.")
-                        (name, value) = message.split(":")
-                        if name == "OT":
-                            oil_temp = float(value)
-                            socket.send("OT:{}".format(oil_temp).encode())
-                        elif name == "OP":
-                            oil_press = float(value)
-                            socket.send("OP:{}".format(oil_press).encode())
-                        elif name == "WT":
-                            water_temp = float(value)
-                            socket.send("WT:{}".format(water_temp).encode())
-                        elif name == "WP":
-                            water_press = float(value)
-                            socket.send("WP:{}".format(water_press).encode())
-                        elif name == "RPM":
-                            rpm = int(value)
-                            socket.send("RPM:{}".format(rpm).encode())
-                        elif name == "FUEL":
-                            fuel = float(value)
-                            socket.send("FUEL:{}".format(fuel).encode())
-                        elif name == "VOLTS":
-                            fuel = float(value)
-                            socket.send("VOLTS:{}".format(volts).encode())
-                    except ValueError:
-                        print(message)
-            except AttributeError:
-                pass
 
             time.sleep(0.01)
         except KeyboardInterrupt:
             break
         loops += 1
 
-print("DONE")
-print("{} loops.".format(loops))
+logger.debug("DONE")
+logger.debug("{} loops.".format(loops))
 
