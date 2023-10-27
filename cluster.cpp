@@ -170,6 +170,8 @@ int main() {
     float fuel_qty;
     float volts;
 
+    bool warn_flash_on = true;
+
     time_t start_time = std::time(NULL);
 
     while (!WindowShouldClose()) {
@@ -225,6 +227,8 @@ int main() {
             } else if (param_name == "VOLTS") {
                 volts = param_value;
                 voltmeter.set_value(volts);
+            } else if (param_name == "FLASH") {
+                warn_flash_on = (param_value > 0.9f);
             } else {
                 std::cout << "Unknown parameter: " << param_name << '\n';
             }
@@ -251,7 +255,7 @@ int main() {
         for (Gauge *gauge : gauges) {
             State state = gauge->get_state();
             if (gauge->get_state() == CRIT) {
-                if (std::time(NULL) % 2) {
+                if (warn_flash_on) {
                     ClearBackground(MAROON);
                     black_text = true;
                     break;
