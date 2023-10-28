@@ -146,6 +146,9 @@ with open(output_filename, 'w', newline='') as csvfile:
                 while arduino.in_waiting > 0:
                     try:
                         message = arduino.readline().decode("utf-8")
+                        # messages shouldn't be more than 100 chars. Something seems to be breaking but it's not leaving any error messages.
+                        if len(message) > 100:
+                            break
                         if "STOP" in message:
                             send_zmqpp("STOP")
                             sys.exit("STOP command received.")
