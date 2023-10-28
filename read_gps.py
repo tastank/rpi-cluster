@@ -142,7 +142,7 @@ def get_position_data(blocking=True):
                 "ns": raw_ns,
                 "longitude": longitude,
                 "ew": raw_ew,
-                "speed_kmh": speed,
+                "speed_kn": speed,
                 "track": track,
                 "date": date,
                 "status": raw_status,

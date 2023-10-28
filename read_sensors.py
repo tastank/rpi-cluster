@@ -15,7 +15,7 @@ logging.basicConfig(filename="/home/pi/log/read_sensors_{}.log".format(int(time.
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
-KMH_TO_MPH = 0.621371
+KNOTS_TO_MPH = 1.15078
 
 rpm = None
 oil_temp = None
@@ -126,8 +126,8 @@ with open(output_filename, 'w', newline='') as csvfile:
         try:
             try:
                 gps_data = read_gps.get_position_data(blocking=False)
-                if "speed_kmh" in gps_data:
-                    mph = gps_data["speed_kmh"] * KMH_TO_MPH
+                if "speed_kn" in gps_data:
+                    mph = gps_data["speed_kn"] * KNOTS_TO_MPH
                     send_zmqpp("MPH:{}".format(mph))
                 elif "track" in gps_data:
                     track = gps_data["track"]
