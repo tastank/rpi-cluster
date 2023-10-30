@@ -129,15 +129,15 @@ with open(output_filename, 'w', newline='') as csvfile:
                 if "speed_kn" in gps_data:
                     mph = gps_data["speed_kn"] * KNOTS_TO_MPH
                     send_zmqpp("MPH:{}".format(mph))
-                elif "track" in gps_data:
+                if "track" in gps_data:
                     track = gps_data["track"]
-                elif "latitude" in gps_data:
+                if "latitude" in gps_data:
                     latitude = gps_data["latitude"]
-                elif "longitude" in gps_data:
+                if "longitude" in gps_data:
                     longitude = gps_data["longitude"]
-                elif "date" in gps_data:
+                if "date" in gps_data:
                     gps_utc_date = gps_data["date"]
-                elif "utc" in gps_data:
+                if "utc" in gps_data:
                     gps_utc_time = gps_data["time"]
             except AttributeError:
                 pass
