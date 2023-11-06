@@ -69,7 +69,7 @@ def get_gps_time():
             # there will be lots of errors here as the initial data will be incomplete; ignore them.
             pass
         if data and "type" in data and data["type"] == "$GPRMC" and data["status"] == "A":
-            date_ = nmea_to_iso_date(data["date"])
+            date_ = data["date"]
             time_ = data["utc"].split('.')[0]
     return "{}-{}".format(date_, time_)
 
