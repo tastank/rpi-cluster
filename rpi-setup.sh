@@ -62,3 +62,24 @@ pip install pyserial
 # Install 0MQ for Python
 pip install pyzmq
 
+echo "================Applying fast boot changes================"
+echo "disable_splash=1" >> /boot/config.txt
+echo "dtoverlay=pi3-disable-bt" >> /boot/config.txt
+echo "boot_delay=0" >> /boot/config.txt
+systemctl disable triggerhappy.service
+systemctl disable salt-master.service
+systemctl disable raspi-config.service
+# this is probably going to mean ssh pi@raspberrypi doesn't work
+systemctl disable avahi-daemon.service
+systemctl disable systemd-timesyncd.service
+systemctl disable dphys-swapfile.service
+systemctl disable apt-daily.service
+systemctl disable wifi-country.service
+systemctl disable keyboard-setup.service
+systemctl disable rng-tools-debian.service
+systemctl disable hciuart.service
+systemctl disable ssh.service
+systemctl disable networking.service
+systemctl disable dhcpcd.service
+echo 'video=HDMI-A-1:512x300@60D console=serial0,115200 console=tty1 root=PARTUUID=7bbeaf9b-02 rootfstype=ext4 fsck.repair=yes quiet rootwait' > /boot/cmdline.txt
+
