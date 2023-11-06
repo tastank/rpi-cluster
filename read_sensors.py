@@ -148,6 +148,7 @@ with open(output_filename, 'w', newline='') as csvfile:
             try:
                 while arduino.in_waiting > 0:
                     try:
+                        # TODO make this faster. May be an Arduino limitation, but it's slowing down the whole loop considerably (0.05-0.1s)
                         message = arduino.readline().decode("utf-8")
                         # messages shouldn't be more than 100 chars. Something seems to be breaking but it's not leaving any error messages.
                         if len(message) > 100:
