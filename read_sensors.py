@@ -100,7 +100,10 @@ loops = 0
 # TODO using this sort of logging method will not indicate stale data. Use something better.
 LOG_INTERVAL = 0.1
 
-output_filename = "/home/pi/car_log/{}.csv".format(datetime.datetime.now().strftime("%Y-%m-%dT%H.%M.%S"))
+gps_time = read_gps.get_gps_time()
+
+output_filename = "/home/pi/car_log/{}.csv".format(gps_time)
+logger.info("Starting CSV output to {}".format(output_filename))
 with open(output_filename, 'w', newline='') as csvfile:
     fieldnames = [
         "system_time",
