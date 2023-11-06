@@ -31,7 +31,7 @@ def debug_print_error(exception, level=0):
         print("{}: {}".format(time.time(), traceback.format_exc()))
 
 def nmea_to_iso_date(date):
-    return "{}{}{}".format(date[4:6], date[2:4], date[0:2])
+    return "20{}{}{}".format(date[4:6], date[2:4], date[0:2])
 
 # In the NMEA message, the position gets transmitted as: 
 # DDMM.MMMMM, where DD denotes the degrees and MM.MMMMM denotes
@@ -69,7 +69,7 @@ def get_gps_time():
             # there will be lots of errors here as the initial data will be incomplete; ignore them.
             pass
         if data and "type" in data and data["type"] == "$GPRMC" and data["status"] == "A":
-            date_ = data["date"]
+            date_ = nmea_to_iso_date(data["date"])
             time_ = data["utc"].split('.')[0]
     return "{}-{}".format(date_, time_)
 
