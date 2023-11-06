@@ -138,7 +138,7 @@ with open(output_filename, 'w', newline='') as csvfile:
                 if "date" in gps_data:
                     gps_utc_date = gps_data["date"]
                 if "utc" in gps_data:
-                    gps_utc_time = gps_data["time"]
+                    gps_utc_time = gps_data["utc"]
             except AttributeError:
                 pass
 
@@ -176,6 +176,8 @@ with open(output_filename, 'w', newline='') as csvfile:
                             send_zmqpp("VOLTS:{}".format(volts))
                         elif name == "FLASH":
                             send_zmqpp("FLASH:{}".format(float(value)))
+                        else:
+                            logger.info(message)
                     except ValueError:
                         logger.error(message)
             except AttributeError:
