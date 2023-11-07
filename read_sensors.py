@@ -136,20 +136,21 @@ with open(output_filename, 'w', newline='') as csvfile:
     while True:
         try:
             try:
-                gps_data = read_gps.get_position_data(blocking=False)
-                if "speed_kn" in gps_data:
-                    mph = gps_data["speed_kn"] * KNOTS_TO_MPH
-                    send_zmqpp("MPH:{}".format(mph))
-                if "track" in gps_data:
-                    track = gps_data["track"]
-                if "latitude" in gps_data:
-                    latitude = gps_data["latitude"]
-                if "longitude" in gps_data:
-                    longitude = gps_data["longitude"]
-                if "date" in gps_data:
-                    gps_utc_date = gps_data["date"]
-                if "utc" in gps_data:
-                    gps_utc_time = gps_data["utc"]
+                while (gps_data := read_gps.get_position_data(blocking=False)):
+                    logger.debug("Read GPS data ({} message)".format(gps_data["type"]))
+                    if "speed_kn" in gps_data:
+                        mph = gps_data["speed_kn"] * KNOTS_TO_MPH
+                        send_zmqpp("MPH:{}".format(mph))
+                    if "track" in gps_data:
+                        track = gps_data["track"]
+                    if "latitude" in gps_data:
+                        latitude = gps_data["latitude"]
+                    if "longitude" in gps_data:
+                        longitude = gps_data["longitude"]
+                    if "date" in gps_data:
+                        gps_utc_date = gps_data["date"]
+                    if "utc" in gps_data:
+                        gps_utc_time = gps_data["utc"]
             except AttributeError:
                 pass
 
