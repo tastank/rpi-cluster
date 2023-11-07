@@ -11,7 +11,11 @@ import zmq
 
 import read_gps
 
-logging.basicConfig(filename="/home/pi/log/read_sensors_{}.log".format(int(time.time()),), format="%(asctime)s %(message)s", filemode='w')
+LOG_DIR = "/home/pi/log/"
+TELEMETRY_DIR = "/home/pi/car_log/"
+
+log_file_name = os.path.join(LOG_DIR, "read_sensors_{}.log".format(int(time.time())))
+logging.basicConfig(filename=log_file_name, format="%(asctime)s %(message)s", filemode='w')
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
@@ -102,7 +106,11 @@ LOG_INTERVAL = 0.1
 
 gps_time = read_gps.get_gps_time()
 
-output_filename = "/home/pi/car_log/{}.csv".format(gps_time)
+logger.info("Read UTC time from GPS ({}). Correcting log filename.".format(gps_time))
+# logging seems to play nicely with this, so it will just continue to log to the new file
+os.rename(log_file_name, os.path.join(LOG_DIR, "read_sensors_{}.log".format(gps_time)))
+
+output_filename = os.path.join(TELEMETRY_DIR, "{}.csv".format(gps_time))
 logger.info("Starting CSV output to {}".format(output_filename))
 with open(output_filename, 'w', newline='') as csvfile:
     fieldnames = [
