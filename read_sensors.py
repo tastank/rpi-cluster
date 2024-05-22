@@ -160,11 +160,16 @@ with open(output_filename, 'w', newline='') as csvfile:
         "loop_time",
         "rpm",
         "oil_press",
+        "oil_press_filtered",
         "oil_temp",
+        "oil_temp_filtered",
         "water_press",
+        "water_press_filtered",
         "water_temp",
+        "water_temp_filtered",
         "volts",
         "fuel",
+        "fuel_qty_filtered",
         "gps_utc_date",
         "gps_utc_time",
         "lat",
@@ -263,6 +268,7 @@ with open(output_filename, 'w', newline='') as csvfile:
                             fuel = float(value)
                             # fuel sloshes a lot. Ignore the reading any time the car is under significant acceleration.
                             # gforce_z should be roughly 1, so ignore it in the computation; checking that the car is not bouncing may also be a good idea though.
+                            # TODO it would be a good idea to make sure the car has been below the threshold for some time rather than just getting there now.
                             if (gforce_x*gforce_x + gforce_y*gforce_y) < FUEL_SENSOR_G_FORCE_SQ_THRESHOLD:
                                 fuel_qty_filter_current_sample = (fuel_qty_filter_current_sample + 1) % FUEL_QTY_FILTER_SAMPLE_COUNT
                                 fuel_qty_filter_samples[fuel_qty_filter_current_sample] = fuel
@@ -291,11 +297,16 @@ with open(output_filename, 'w', newline='') as csvfile:
                     "loop_time": current_time - last_log_time,
                     "rpm": rpm,
                     "oil_press": oil_press,
+                    "oil_press_filtered": oil_press_filtered,
                     "oil_temp": oil_temp,
+                    "oil_temp_filtered": oil_temp_filtered,
                     "water_press": water_press,
+                    "water_press_filtered": water_press_filtered,
                     "water_temp": water_temp,
+                    "water_temp_filtered": water_temp_filtered,
                     "volts": volts,
                     "fuel": fuel,
+                    "fuel_qty_filtered": fuel_qty_filtered,
                     "gps_utc_date": gps_utc_date,
                     "gps_utc_time": gps_utc_time,
                     "lat": latitude,
