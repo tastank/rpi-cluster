@@ -204,7 +204,10 @@ with open(output_filename, 'w', newline='') as csvfile:
                         logger.error(message)
             except AttributeError:
                 pass
-            if time.time() - last_log_time >= LOG_INTERVAL:
+            # use a consistent time for the following checks
+            current_time = time.time()
+            if current_time - last_log_time >= LOG_INTERVAL:
+                last_log_time += LOG_INTERVAL
                 fields = {
                     "system_time": time.time(),
                     "rpm": rpm,
@@ -223,6 +226,11 @@ with open(output_filename, 'w', newline='') as csvfile:
                     "track": track
                 }
                 csv_writer.writerow(fields)
+                # if more than one LOG_INTERVAL has elapsed, repeat the observation as MoTeC is expecting a constant log rate.
+                while current_time - last_log_time >= LOG_INTERVAL:
+                    logger.warn("Loop took longer than LOG_INTERVAL; repeating measurements")
+                    last_log_time += LOG_INTERVAL
+                    csv_writer.writerow(fields)
 
 
             time.sleep(0.01)
