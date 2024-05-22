@@ -60,10 +60,23 @@ ROAD_AMERICA_FINISH_LINE_LEFT_LONGITUDE = -87.989493
 ROAD_AMERICA_FINISH_LINE_RIGHT_LONGITUDE = -87.990064
 ROAD_AMERICA_FINISH_LINE_LATITUDE = 43.797913
 
-# The other fields are filtered on the Arduino. They should probably be filtered here, or maybe even in the display application.
 WATER_PRESS_FILTER_SAMPLE_COUNT = 10
 water_press_filter_samples = [0]*WATER_PRESS_FILTER_SAMPLE_COUNT
 water_press_filter_current_sample = 0
+OIL_PRESS_FILTER_SAMPLE_COUNT = 10
+oil_press_filter_samples = [0]*OIL_PRESS_FILTER_SAMPLE_COUNT
+oil_press_filter_current_sample = 0
+WATER_TEMP_FILTER_SAMPLE_COUNT = 64
+water_temp_filter_samples = [0]*WATER_TEMP_FILTER_SAMPLE_COUNT
+water_temp_filter_current_sample = 0
+OIL_TEMP_FILTER_SAMPLE_COUNT = 64
+oil_temp_filter_samples = [0]*OIL_TEMP_FILTER_SAMPLE_COUNT
+oil_temp_filter_current_sample = 0
+FUEL_QTY_FILTER_SAMPLE_COUNT = 255
+fuel_qty_filter_samples = [0]*FUEL_QTY_FILTER_SAMPLE_COUNT
+fuel_qty_filter_current_sample = 0
+# this is the square of G force, to avoid the sqrt
+FUEL_SENSOR_G_FORCE_SQ_THRESHOLD = 0.02
 
 last_log_time = int(time.time())
 # I'm OK with missing a second of data to not log a bunch of repeats to fill the gap between the floor of the timestamp and the actual start time
@@ -218,15 +231,25 @@ with open(output_filename, 'w', newline='') as csvfile:
                             send_zmqpp("STOP")
                             sys.exit("STOP command received.")
                         (name, value) = message.split(":")
+                        # TODO this is logging unfiltered values; is it better to just log the filtered values?
                         if name == "OT":
                             oil_temp = float(value)
-                            send_zmqpp("OT:{}".format(oil_temp))
+                            oil_temp_filter_current_sample = (oil_temp_filter_current_sample + 1) % OIL_TEMP_FILTER_SAMPLE_COUNT
+                            oil_temp_filter_samples[oil_temp_filter_current_sample] = oil_temp
+                            oil_temp_filtered = sum(oil_temp_filter_samples) / OIL_TEMP_FILTER_SAMPLE_COUNT
+                            send_zmqpp("OT:{}".format(oil_temp_filtered))
                         elif name == "OP":
                             oil_press = float(value)
-                            send_zmqpp("OP:{}".format(oil_press))
+                            oil_press_filter_current_sample = (oil_press_filter_current_sample + 1) % OIL_PRESS_FILTER_SAMPLE_COUNT
+                            oil_press_filter_samples[oil_press_filter_current_sample] = oil_press
+                            oil_press_filtered = sum(oil_press_filter_samples) / OIL_PRESS_FILTER_SAMPLE_COUNT
+                            send_zmqpp("OP:{}".format(oil_press_filtered))
                         elif name == "WT":
                             water_temp = float(value)
-                            send_zmqpp("WT:{}".format(water_temp))
+                            water_temp_filter_current_sample = (water_temp_filter_current_sample + 1) % WATER_TEMP_FILTER_SAMPLE_COUNT
+                            water_temp_filter_samples[water_temp_filter_current_sample] = water_temp
+                            water_temp_filtered = sum(water_temp_filter_samples) / WATER_TEMP_FILTER_SAMPLE_COUNT
+                            send_zmqpp("WT:{}".format(water_temp_filtered))
                         elif name == "WP":
                             water_press = float(value)
                             water_press_filter_current_sample = (water_press_filter_current_sample + 1) % WATER_PRESS_FILTER_SAMPLE_COUNT
@@ -238,7 +261,13 @@ with open(output_filename, 'w', newline='') as csvfile:
                             send_zmqpp("RPM:{}".format(rpm))
                         elif name == "FUEL":
                             fuel = float(value)
-                            send_zmqpp("FUEL:{}".format(fuel))
+                            # fuel sloshes a lot. Ignore the reading any time the car is under significant acceleration.
+                            # gforce_z should be roughly 1, so ignore it in the computation; checking that the car is not bouncing may also be a good idea though.
+                            if (gforce_x*gforce_x + gforce_y*gforce_y) < FUEL_SENSOR_G_FORCE_SQ_THRESHOLD:
+                                fuel_qty_filter_current_sample = (fuel_qty_filter_current_sample + 1) % FUEL_QTY_FILTER_SAMPLE_COUNT
+                                fuel_qty_filter_samples[fuel_qty_filter_current_sample] = fuel
+                                fuel_qty_filtered = sum(fuel_qty_filter_samples) / FUEL_QTY_FILTER_SAMPLE_COUNT
+                            send_zmqpp("FUEL:{}".format(fuel_qty_filtered))
                         # TODO remove this as the RaceBox logs volts. Leaving it in here as a reminder to take it out of the Arduino code.
                         #elif name == "VOLTS":
                         #    volts = float(value)
