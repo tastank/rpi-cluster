@@ -322,6 +322,7 @@ if __name__ == "__main__":
     # This is the serial number for my device. Update it to yours if you want to test the connection this way
     sn = 3242701007
     LOG_DIR = "/home/pi/log/racebox"
+    os.umask(0)
     os.makedirs(LOG_DIR, exist_ok=True)
 
     log_file_name_template = "{:04}.log"

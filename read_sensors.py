@@ -14,6 +14,7 @@ import racebox
 
 LOG_DIR = "/home/pi/log/read_sensors/"
 TELEMETRY_DIR = "/home/pi/log/telemetry/"
+os.umask(0)
 os.makedirs(LOG_DIR, exist_ok=True)
 os.makedirs(TELEMETRY_DIR, exist_ok=True)
 
