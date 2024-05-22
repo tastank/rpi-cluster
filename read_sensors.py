@@ -185,7 +185,7 @@ with open(output_filename, 'w', newline='') as csvfile:
                             water_press = float(value)
                             water_press_filter_current_sample = (water_press_filter_current_sample + 1) % WATER_PRESS_FILTER_SAMPLE_COUNT
                             water_press_filter_samples[water_press_filter_current_sample] = water_press
-                            water_press_filtered = sum(water_press_filter_samples) / len(water_press_filter_samples)
+                            water_press_filtered = sum(water_press_filter_samples) / WATER_PRESS_FILTER_SAMPLE_COUNT
                             send_zmqpp("WP:{}".format(water_press_filtered))
                         elif name == "RPM":
                             rpm = int(value)
