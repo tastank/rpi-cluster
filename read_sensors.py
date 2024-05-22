@@ -34,10 +34,15 @@ KNOTS_TO_MPH = 1.15078
 
 rpm = None
 oil_temp = None
+oil_temp_filtered = None
 oil_press = None
+oil_press_filtered = None
 water_temp = None
+water_temp_filtered = None
 water_press = None
+water_press_filtered = None
 fuel = None
+fuel_qty_filtered = None
 mph = None
 latitude = None
 longitude = None
@@ -157,6 +162,8 @@ with open(output_filename, 'w', newline='') as csvfile:
     fieldnames = [
         "system_time",
         "nominal_time",
+        # TODO there has to be a better name than "iteration_time"; this is the elapsed time since data was last logged, and should equal LOG_INTERVAL on average
+        "iteration_time",
         "loop_time",
         "rpm",
         "oil_press",
@@ -189,6 +196,7 @@ with open(output_filename, 'w', newline='') as csvfile:
     csv_writer.writeheader()
 
     while True:
+        loop_start_time = time.time()
         try:
             while True:
                 try:
@@ -294,7 +302,8 @@ with open(output_filename, 'w', newline='') as csvfile:
                 fields = {
                     "system_time": current_time,
                     "nominal_time": next_log_time,
-                    "loop_time": current_time - last_log_time,
+                    "iteration_time": current_time - last_log_time,
+                    "loop_time": current_time - loop_start_time,
                     "rpm": rpm,
                     "oil_press": oil_press,
                     "oil_press_filtered": oil_press_filtered,
@@ -332,7 +341,6 @@ with open(output_filename, 'w', newline='') as csvfile:
                     fields["repeated"] = 1
                     csv_writer.writerow(fields)
                     next_log_time += LOG_INTERVAL
-
 
             time.sleep(0.01)
         except KeyboardInterrupt:
