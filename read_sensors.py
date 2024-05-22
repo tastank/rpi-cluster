@@ -7,6 +7,7 @@ import os
 import serial
 import sys
 import time
+import traceback
 import zmq
 
 import read_gps
@@ -95,8 +96,8 @@ time.sleep(0.1)
 try:
     read_gps.debug_enable()
     read_gps.setup_gps(gps_port)
-except:
-    pass
+except Exception as e:
+    print(traceback.format_exc())
 
 loops = 0
 
