@@ -322,9 +322,9 @@ if __name__ == "__main__":
     # This is the serial number for my device. Update it to yours if you want to test the connection this way
     sn = 3242701007
     LOG_DIR = "/home/pi/log/racebox"
-    TELEMETRY_DIR = "/home/pi/car_log/"
+    os.makedirs(LOG_DIR, exist_ok=True)
 
-    log_file_name_template = "racebox_{:04}.log"
+    log_file_name_template = "{:04}.log"
     last_log_number = 0
     log_files = sorted(os.listdir(LOG_DIR))
     if len(log_files) > 0:

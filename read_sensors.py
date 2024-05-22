@@ -14,6 +14,8 @@ import racebox
 
 LOG_DIR = "/home/pi/log/read_sensors/"
 TELEMETRY_DIR = "/home/pi/log/telemetry/"
+os.makedirs(LOG_DIR, exist_ok=True)
+os.makedirs(TELEMETRY_DIR, exist_ok=True)
 
 log_file_name_template = "{:04}.log"
 last_log_number = 0
