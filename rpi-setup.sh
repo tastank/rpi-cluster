@@ -76,9 +76,14 @@ systemctl disable apt-daily.service
 systemctl disable wifi-country.service
 systemctl disable keyboard-setup.service
 systemctl disable rng-tools-debian.service
-systemctl disable hciuart.service
-systemctl disable ssh.service
-systemctl disable networking.service
-systemctl disable dhcpcd.service
+systemctl enable avahi-daemon.service
+systemctl enable bluetooth.service
+systemctl enable hciuart.service
+systemctl enable ssh.service
+systemctl enable networking.service
+systemctl enable dhcpcd.service
 echo 'video=HDMI-A-1:512x300@60D console=serial0,115200 console=tty1 root=PARTUUID=7bbeaf9b-02 rootfstype=ext4 fsck.repair=yes quiet rootwait' > /boot/cmdline.txt
 
+# Not sure exactly what this does, but Bluetooth doesn't work without it.
+# maybe it's not needed; hciuart.service was disabled and that may have been enough
+modprobe btusb
