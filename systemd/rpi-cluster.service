@@ -1,0 +1,9 @@
+[Unit]
+Description=RPi Instrument Cluster
+
+[Service]
+Restart=on-failure
+ExecStart=/home/pi/rpi-cluster/cluster > /home/pi/rpi-cluster/cluster.log
+
+[Install]
+WantedBy=sysinit.target

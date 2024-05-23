@@ -1,0 +1,11 @@
+[Unit]
+Description=RPi Instrument Cluster Sensor Reading Script
+After=multi-user.target
+
+[Service]
+Restart=on-failure
+ExecStart=python /home/pi/rpi-cluster/racebox.py > /home/pi/rpi-cluster/racebox.log
+ExecStopPost=bluetoothctl disconnect
+
+[Install]
+WantedBy=basic.target

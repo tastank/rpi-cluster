@@ -1,0 +1,10 @@
+[Unit]
+Description=RPi Instrument Cluster Sensor Reading Script
+After=multi-user.target
+
+[Service]
+Restart=on-failure
+ExecStart=python /home/pi/rpi-cluster/read_sensors.py > /home/pi/rpi-cluster/read_sensors.log
+
+[Install]
+WantedBy=basic.target
