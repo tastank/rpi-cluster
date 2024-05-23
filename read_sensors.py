@@ -50,9 +50,10 @@ longitude = None
 altitude = None
 volts = None
 track = None
-gforce_x = None
-gforce_y = None
-gforce_z = None
+# initializing these to None may cause an error when checking G force to determine whether the fuel reading should be ignored.
+gforce_x = 0
+gforce_y = 0
+gforce_z = 0
 gps_utc_date = None
 gps_utc_time = None
 cumulative_lap_distance = 0
