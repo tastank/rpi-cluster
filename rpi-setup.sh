@@ -64,7 +64,6 @@ pip install pyzmq
 
 echo "================Applying fast boot changes================"
 echo "disable_splash=1" >> /boot/config.txt
-echo "dtoverlay=pi3-disable-bt" >> /boot/config.txt
 echo "boot_delay=0" >> /boot/config.txt
 systemctl disable triggerhappy.service
 systemctl disable salt-master.service
