@@ -116,7 +116,7 @@ for ttyUSBfile in ttyUSBfiles:
     try:
         ttyUSBs.append(serial.Serial(ttyUSBfile, baudrate=921600, timeout=0.5))
     except serial.serialutil.SerialException as e:
-        logger.error(e)
+        logger.error(traceback.format_exc())
 
 arduino = None
 
@@ -246,6 +246,8 @@ with open(output_filename, 'w', newline='') as csvfile:
                         if "STOP" in message:
                             send_zmqpp("STOP")
                             sys.exit("STOP command received.")
+                        if "RESET" in message:
+                            logger.warn("Arduino reset")
                         (name, value) = message.split(":")
                         # TODO this is logging unfiltered values; is it better to just log the filtered values?
                         if name == "OT":
@@ -294,11 +296,11 @@ with open(output_filename, 'w', newline='') as csvfile:
                         else:
                             logger.debug(message)
                     except ValueError:
-                        logger.error(message)
+                        logger.error(traceback.format_exc())
                     except UnicodeDecodeError:
-                        logger.error("Unable to decode message.")
+                        logger.error(traceback.format_exc())
             except AttributeError:
-                pass
+                logger.error(traceback.format_exc())
             # use a consistent time for the following checks
             current_time = time.time()
             if current_time >= next_log_time:
@@ -348,6 +350,9 @@ with open(output_filename, 'w', newline='') as csvfile:
             time.sleep(0.01)
         except KeyboardInterrupt:
             break
+        except:
+            # Don't just give up if there's an error
+            logger.error(traceback.format_exc())
 
 logger.debug("DONE")
 
