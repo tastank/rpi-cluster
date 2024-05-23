@@ -2,6 +2,7 @@
 
 import csv
 import datetime
+import gpiozero
 import logging
 import os
 import serial
@@ -32,6 +33,8 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 KNOTS_TO_MPH = 1.15078
+
+cpu = gpiozero.CPUTemperature()
 
 rpm = None
 oil_temp = None
@@ -192,6 +195,7 @@ with open(output_filename, 'w', newline='') as csvfile:
         "beacon",
         "lap_number",
         "cumulative_lap_distance",
+        "rpi_cpu_temp",
         "repeated",
     ]
     csv_writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -334,6 +338,7 @@ with open(output_filename, 'w', newline='') as csvfile:
                     "beacon": beacon,
                     "lap_number": lap_number,
                     "cumulative_lap_distance": cumulative_lap_distance,
+                    "rpi_cpu_temp": cpu.temperature,
                     "repeated": 0,
                 }
                 csv_writer.writerow(fields)
