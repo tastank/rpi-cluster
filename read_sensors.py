@@ -88,11 +88,13 @@ for ttyUSBfile in ttyUSBfiles:
 
 arduino = None
 
-logger.debug("Attempting to determine which serial device is which")
+logger.debug("Attempting to find Arduino")
 if len(ttyUSBs) == 1:
-    arduino = ttyUSB
+    logger.debug("Only one ttyUSB device found, assuming it is the Arduino.")
+    arduino = ttyUSBs[0]
 # if there are no ttyUSB devices, this block will look for one forever
 elif len(ttyUSBs) > 0:
+    logger.debug("Attempting to determine which serial device is which")
     while arduino is None:
         # Use read() instead of readline() as the two devices will not use the same baudrate and \n will never be found using the wrong baudrate.
         for ttyUSB in ttyUSBs:
@@ -107,6 +109,10 @@ elif len(ttyUSBs) > 0:
                 logger.error(e)
 # TODO is this still needed, or was it needed by read_gps?
 time.sleep(0.1)
+if arduino is None:
+    logger.warn("Arduino not found!")
+else:
+    logger.debug("Arduino found: {}".format(arduino.name))
 
 # Interval between log entries, in seconds
 # TODO using this sort of logging method will not indicate stale data. Use something better.
