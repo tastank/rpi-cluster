@@ -11,8 +11,8 @@
 #include "RoundGauge.h"
 #include "RaylibHelper.h"
 
-#define DEBUG
-#define DEBUG_FPS
+//#define DEBUG
+//#define DEBUG_FPS
 
 int main() {
 
@@ -65,7 +65,7 @@ int main() {
     );
     RoundGauge oil_press_gauge(
         "OIL PRESS",
-        100.0f, 100.0f,
+        100.0f, 500.0f,
         150.0f,
         3,
         4,
@@ -84,19 +84,9 @@ int main() {
         {WARN, OK, WARN, CRIT},
         font
     );
-    RoundGauge water_press_gauge(
-        "WATER PRESS",
-        SCREEN_WIDTH-oil_press_gauge.x, oil_press_gauge.y,
-        150.0f,
-        3,
-        5,
-        {0.0f, 8.0f, 11.0f, 15.0f, 18.0f, 20.0f},
-        {CRIT, WARN, OK, WARN, CRIT},
-        font
-    );
     RoundGauge water_temp_gauge(
         "WATER TEMP",
-        water_press_gauge.x, oil_temp_gauge.y,
+        SCREEN_WIDTH-oil_press_gauge.x, oil_press_gauge.y,
         150.0f,
         3,
         4,
@@ -104,7 +94,16 @@ int main() {
         {WARN, OK, WARN, CRIT},
         font
     );
-
+    RoundGauge water_press_gauge(
+        "WATER PRESS",
+        water_temp_gauge.x, oil_temp_gauge.y,
+        150.0f,
+        3,
+        5,
+        {0.0f, 8.0f, 11.0f, 15.0f, 18.0f, 20.0f},
+        {WARN, WARN, OK, WARN, CRIT},
+        font
+    );
     DigitalGauge speedometer(
         "MPH",
         512.0f, 275.0f,
@@ -288,11 +287,11 @@ int main() {
 
         DrawTextExAlign(font, "OIL", {oil_press_gauge.x, SCREEN_HEIGHT/2}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
         DrawPixel(oil_press_gauge.x, SCREEN_HEIGHT/2, MAGENTA);
-        DrawTextExAlign(font, "WATER", {water_press_gauge.x, SCREEN_HEIGHT/2}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
-        DrawTextExAlign(font, "PRESS", {oil_press_gauge.x, oil_press_gauge.y+oil_press_gauge.size/2+30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
-        DrawTextExAlign(font, "TEMP", {oil_press_gauge.x, oil_temp_gauge.y-oil_temp_gauge.size/2-30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "WATER", {water_temp_gauge.x, SCREEN_HEIGHT/2}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "PRESS", {oil_press_gauge.x, oil_press_gauge.y-oil_press_gauge.size/2-30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "TEMP", {oil_temp_gauge.x, oil_temp_gauge.y+oil_temp_gauge.size/2+30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
         DrawTextExAlign(font, "PRESS", {water_press_gauge.x, water_press_gauge.y+water_press_gauge.size/2+30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
-        DrawTextExAlign(font, "TEMP", {water_press_gauge.x, water_temp_gauge.y-water_temp_gauge.size/2-30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "TEMP", {water_temp_gauge.x, water_temp_gauge.y-water_temp_gauge.size/2-30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
         // I should probably change this behavior, but to make drawing easier RectGauge changes the x and y values to one of the corners instead of the center. DigitalGauge does not, so use the digital fuel gauge for alignment.
         DrawTextExAlign(font, "FUEL", {fuel_qty_display.x, 70.0f}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
         DrawTextExAlign(font, "VOLTS", {voltmeter.x, voltmeter.y + 30.0f}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
