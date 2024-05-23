@@ -151,14 +151,11 @@ with open(output_filename, 'w', newline='') as csvfile:
             while True:
                 try:
                     racebox_data = racebox_socket.recv_json(flags=zmq.NOBLOCK)
-                    if "speed_mph" in racebox_data:
-                        send_zmqpp("MPH:{}".format(racebox_data["speed_mph"]))
-                    if "heading" in racebox_data:
-                        track = racebox_data["heading"]
-                    if "latitude" in racebox_data:
-                        latitude = racebox_data["latitude"]
-                    if "longitude" in racebox_data:
-                        longitude = racebox_data["longitude"]
+                    mph = racebox_data["speed_mph"]
+                    send_zmqpp("MPH:{}".format(mph))
+                    track = racebox_data["heading"]
+                    latitude = racebox_data["latitude"]
+                    longitude = racebox_data["longitude"]
                     gps_utc_date = f"{racebox_data['year']}-{racebox_data['month']:02}-{racebox_data['day']:02}"
                     seconds = racebox_data["second"] + racebox_data["nanoseconds"]/1e9
                     gps_utc_time = f"{racebox_data['hour']:02}:{racebox_data['minute']:02}:{seconds:05.2}"
@@ -166,6 +163,7 @@ with open(output_filename, 'w', newline='') as csvfile:
                     gforce_y = racebox_data["gforce_y"]
                     gforce_z = racebox_data["gforce_z"]
                     volts = racebox_data["input_voltage"]
+                    send_zmqpp("VOLTS:{}".format(volts))
                     last_raebox_update = time.time()
                 except zmq.ZMQError:
                     break
@@ -205,11 +203,11 @@ with open(output_filename, 'w', newline='') as csvfile:
                             fuel = float(value)
                             send_zmqpp("FUEL:{}".format(fuel))
                         # TODO remove this as the RaceBox logs volts. Leaving it in here as a reminder to take it out of the Arduino code.
-                        elif name == "VOLTS":
-                            volts = float(value)
-                            send_zmqpp("VOLTS:{}".format(volts))
-                        elif name == "FLASH":
-                            send_zmqpp("FLASH:{}".format(float(value)))
+                        #elif name == "VOLTS":
+                        #    volts = float(value)
+                        #    send_zmqpp("VOLTS:{}".format(volts))
+                        #elif name == "FLASH":
+                        #    send_zmqpp("FLASH:{}".format(float(value)))
                         else:
                             logger.info(message)
                     except ValueError:
