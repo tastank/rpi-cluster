@@ -26,7 +26,6 @@ class TelemetryUploader:
         if len(self.updates) > 25 * 60 * 5:
             self.updates = self.updates[1:]
         if self.should_send_update():
-            print("Sending update")
             # TODO make this work with update strings that contain ","
             update_csv = "\n".join([",".join([str(row[fieldname]) for fieldname in self.fieldnames]) for row in self.updates])
             self.socket.send_json({"update_csv": update_csv})
