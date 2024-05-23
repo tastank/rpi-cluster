@@ -206,8 +206,8 @@ with open(output_filename, 'w', newline='') as csvfile:
                         #elif name == "VOLTS":
                         #    volts = float(value)
                         #    send_zmqpp("VOLTS:{}".format(volts))
-                        #elif name == "FLASH":
-                        #    send_zmqpp("FLASH:{}".format(float(value)))
+                        elif name == "FLASH":
+                            send_zmqpp("FLASH:{}".format(float(value)))
                         else:
                             logger.info(message)
                     except ValueError:
