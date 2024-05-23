@@ -228,7 +228,7 @@ class RaceBoxData:
 
         if device is None:
             print("no matching device found, you may need to edit match_racebox().")
-            sys.exit(1)
+            return
         print("RaceBox found")
 
         def handle_disconnect(_: BleakClient):
