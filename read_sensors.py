@@ -209,6 +209,7 @@ with open(output_filename, 'w', newline='') as csvfile:
                     track = racebox_data["heading"]
                     latitude = racebox_data["latitude"]
                     longitude = racebox_data["longitude"]
+                    altitude = racebox_data["msl_altitude_ft"]
                     gps_utc_date = f"{racebox_data['year']}-{racebox_data['month']:02}-{racebox_data['day']:02}"
                     seconds = racebox_data["second"] + racebox_data["nanoseconds"]/1e9
                     gps_utc_time = f"{racebox_data['hour']:02}:{racebox_data['minute']:02}:{seconds:05.2f}"
