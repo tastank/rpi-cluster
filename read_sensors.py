@@ -108,8 +108,6 @@ elif len(ttyUSBs) > 0:
 # TODO is this still needed, or was it needed by read_gps?
 time.sleep(0.1)
 
-loops = 0
-
 # Interval between log entries, in seconds
 # TODO using this sort of logging method will not indicate stale data. Use something better.
 LOG_INTERVAL = 0.1
@@ -255,8 +253,6 @@ with open(output_filename, 'w', newline='') as csvfile:
             time.sleep(0.01)
         except KeyboardInterrupt:
             break
-        loops += 1
 
 logger.debug("DONE")
-logger.debug("{} loops.".format(loops))
 
