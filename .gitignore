@@ -1,3 +1,4 @@
 resources/
 __pycache__/
 cluster
+rpi-cluster.conf

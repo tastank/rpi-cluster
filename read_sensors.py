@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+import configparser
+import copy
 import csv
 import datetime
 import gpiozero
@@ -12,7 +14,9 @@ import traceback
 import zmq
 
 import racebox
+import telemetry_upload
 
+CONFIG_FILE = "rpi-cluster.conf"
 LOG_DIR = "/home/pi/log/read_sensors/"
 TELEMETRY_DIR = "/home/pi/log/telemetry/"
 os.umask(0)
@@ -30,7 +34,10 @@ log_number = last_log_number + 1
 log_file_name = os.path.join(LOG_DIR, log_file_name_template.format(log_number))
 logging.basicConfig(filename=log_file_name, format="%(asctime)s %(message)s", filemode='w')
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
+
+config = configparser.ConfigParser()
+config.read(CONFIG_FILE)
 
 cpu = gpiozero.CPUTemperature()
 
@@ -94,6 +101,52 @@ cluster_socket = context.socket(zmq.PUSH)
 racebox_socket = context.socket(zmq.PULL)
 cluster_socket.connect("tcp://localhost:9961")
 racebox_socket.bind("tcp://*:9962")
+
+fieldnames = [
+    "system_time",
+    "nominal_time",
+    # TODO there has to be a better name than "iteration_time"; this is the elapsed time since data was last logged, and should equal LOG_INTERVAL on average
+    "iteration_time",
+    "loop_time",
+    "rpm",
+    "oil_press",
+    "oil_press_filtered",
+    "oil_temp",
+    "oil_temp_filtered",
+    "water_press",
+    "water_press_filtered",
+    "water_temp",
+    "water_temp_filtered",
+    "volts",
+    "fuel",
+    "fuel_qty_filtered",
+    "gps_utc_date",
+    "gps_utc_time",
+    "lat",
+    "lon",
+    "alt",
+    "mph",
+    "track",
+    "gforce_x",
+    "gforce_y",
+    "gforce_z",
+    "beacon",
+    "lap_number",
+    "cumulative_lap_distance",
+    "rpi_cpu_temp",
+    "repeated",
+]
+
+if config["TELEMETRY_UPLOAD"]["upload_enabled"] == "1":
+    uploader_fieldnames = copy.copy(fieldnames)
+    # ignore these fields to conserve bandwidth
+    for ignore_field in ["nominal_time", "iteration_time", "loop_time", "oil_press", "oil_temp", "water_press", "water_temp", "gps_utc_date"]:
+        uploader_fieldnames.remove(ignore_field)
+    telemetry_uploader = telemetry_upload.TelemetryUploader(
+            fieldnames=uploader_fieldnames,
+            address=config["TELEMETRY_UPLOAD"]["address"],
+            port=config["TELEMETRY_UPLOAD"]["port"],
+    )
 
 # the only other socket should be read-only, but since there are multiple it feels wrong to assume which one we'll be using
 def send_zmqpp(message, socket=cluster_socket):
@@ -161,40 +214,6 @@ last_racebox_update = time.time()
 previous_latitude = 0
 
 with open(output_filename, 'w', newline='') as csvfile:
-    fieldnames = [
-        "system_time",
-        "nominal_time",
-        # TODO there has to be a better name than "iteration_time"; this is the elapsed time since data was last logged, and should equal LOG_INTERVAL on average
-        "iteration_time",
-        "loop_time",
-        "rpm",
-        "oil_press",
-        "oil_press_filtered",
-        "oil_temp",
-        "oil_temp_filtered",
-        "water_press",
-        "water_press_filtered",
-        "water_temp",
-        "water_temp_filtered",
-        "volts",
-        "fuel",
-        "fuel_qty_filtered",
-        "gps_utc_date",
-        "gps_utc_time",
-        "lat",
-        "lon",
-        "alt",
-        "mph",
-        "track",
-        "gforce_x",
-        "gforce_y",
-        "gforce_z",
-        "beacon",
-        "lap_number",
-        "cumulative_lap_distance",
-        "rpi_cpu_temp",
-        "repeated",
-    ]
     csv_writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     csv_writer.writeheader()
 
@@ -340,6 +359,8 @@ with open(output_filename, 'w', newline='') as csvfile:
                     "repeated": 0,
                 }
                 csv_writer.writerow(fields)
+                if config["TELEMETRY_UPLOAD"]["upload_enabled"] == "1":
+                    telemetry_uploader.send_update(fields)
                 next_log_time += LOG_INTERVAL
                 last_log_time = current_time
                 # if more than one LOG_INTERVAL has elapsed, repeat the observation as MoTeC is expecting a constant log rate.
@@ -348,6 +369,8 @@ with open(output_filename, 'w', newline='') as csvfile:
                     fields["nominal_time"] = next_log_time
                     fields["repeated"] = 1
                     csv_writer.writerow(fields)
+                    if config["TELEMETRY_UPLOAD"]["upload_enabled"] == "1":
+                        telemetry_uploader.send_update(fields)
                     next_log_time += LOG_INTERVAL
 
             time.sleep(0.01)
