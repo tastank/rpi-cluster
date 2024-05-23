@@ -15,7 +15,15 @@ import racebox
 LOG_DIR = "/home/pi/log/"
 TELEMETRY_DIR = "/home/pi/car_log/"
 
-log_file_name = os.path.join(LOG_DIR, "read_sensors_{}.log".format(int(time.time())))
+log_file_name_template = "read_sensors_{:04}.log"
+last_log_number = 0
+log_files = sorted(os.listdir(LOG_DIR))
+if len(log_files) > 0:
+    last_log_file_name = log_files[-1]
+    last_log_number = int(last_log_file_name.split(".")[0])
+log_number = last_log_number + 1
+
+log_file_name = os.path.join(LOG_DIR, log_file_name_template.format(log_number))
 logging.basicConfig(filename=log_file_name, format="%(asctime)s %(message)s", filemode='w')
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
@@ -63,12 +71,6 @@ def send_zmqpp(message, socket=cluster_socket):
     else:
         logger.debug("Value is inf; skipping: {}".format(message))
 
-def time_string_from_racebox_data(racebox_data):
-    gps_utc_date = f"{racebox_data['year']}{racebox_data['month']:02}{racebox_data['day']:02}"
-    gps_utc_time = f"{racebox_data['hour']:02}{racebox_data['minute']:02}{racebox_data['second']:02}"
-    return f"{gps_utc_date}-{gps_utc_time}"
-
-
 ttyUSBfiles = []
 ttyUSBs = []
 # We know the Arduino will be set to 921600, but the GPS may be 9600 or 57600 depending on whether it has been initialized already, so look for the Arduino.
@@ -112,28 +114,10 @@ loops = 0
 # TODO using this sort of logging method will not indicate stale data. Use something better.
 LOG_INTERVAL = 0.1
 
-gps_time = None
-
-first_attempt = time.time()
-while gps_time is None and time.time() - first_attempt < 5:
-    try:
-        racebox_data = racebox_socket.recv_json(flags=zmq.NOBLOCK)
-        if racebox_data["date_time_flags"] & racebox.DATE_TIME_CONFIRM_AVAIL_MASK\
-                and racebox_data["date_time_flags"] & racebox.DATE_VALID_MASK\
-                and racebox_data["date_time_flags"] & racebox.TIME_VALID_MASK:
-            gps_time = time_string_from_racebox_data(racebox_data)
-
-            logger.info("Read UTC time from GPS ({}). Correcting log filename.".format(gps_time))
-            # logging seems to play nicely with this, so it will just continue to log to the new file
-            os.rename(log_file_name, os.path.join(LOG_DIR, "read_sensors_{}.log".format(gps_time)))
-    except zmq.ZMQError:
-        # we'll just continue to use the system time for this file and hope there's not a filename collision
-        pass
-
 # I'm OK with missing a second of data to not log a bunch of repeats to fill the gap between the floor of the timestamp and the actual start time
 next_log_time = int(time.time()) + 1
 
-output_filename = os.path.join(TELEMETRY_DIR, "{}.csv".format(gps_time))
+output_filename = os.path.join(TELEMETRY_DIR, "{}.csv".format(log_number))
 logger.info("Starting CSV output to {}".format(output_filename))
 with open(output_filename, 'w', newline='') as csvfile:
     fieldnames = [
