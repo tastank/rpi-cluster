@@ -20,7 +20,7 @@ last_log_number = 0
 log_files = sorted(os.listdir(LOG_DIR))
 if len(log_files) > 0:
     last_log_file_name = log_files[-1]
-    last_log_number = int(last_log_file_name.split(".")[0])
+    last_log_number = int(last_log_file_name.split(".")[0].split("_")[-1])
 log_number = last_log_number + 1
 
 log_file_name = os.path.join(LOG_DIR, log_file_name_template.format(log_number))
@@ -117,7 +117,7 @@ LOG_INTERVAL = 0.1
 # I'm OK with missing a second of data to not log a bunch of repeats to fill the gap between the floor of the timestamp and the actual start time
 next_log_time = int(time.time()) + 1
 
-output_filename = os.path.join(TELEMETRY_DIR, "{}.csv".format(log_number))
+output_filename = os.path.join(TELEMETRY_DIR, "{:04}.csv".format(log_number))
 logger.info("Starting CSV output to {}".format(output_filename))
 with open(output_filename, 'w', newline='') as csvfile:
     fieldnames = [
