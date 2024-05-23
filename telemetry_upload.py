@@ -22,6 +22,9 @@ class TelemetryUploader:
 
     def send_update(self, update):
         self.updates.append(update)
+        # to limit memory use, limit stored updates to five minutes
+        if len(self.updates) > 25 * 60 * 5:
+            self.updates = self.updates[1:]
         if self.should_send_update():
             print("Sending update")
             # TODO make this work with update strings that contain ","
