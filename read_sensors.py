@@ -42,6 +42,10 @@ WATER_PRESS_FILTER_SAMPLE_COUNT = 10
 water_press_filter_samples = [0]*WATER_PRESS_FILTER_SAMPLE_COUNT
 water_press_filter_current_sample = 0
 
+last_log_time = int(time.time())
+# I'm OK with missing a second of data to not log a bunch of repeats to fill the gap between the floor of the timestamp and the actual start time
+next_log_time = last_log_time + 1
+
 context = zmq.Context()
 socket = context.socket(zmq.PUSH)
 socket.connect("tcp://localhost:9961")
@@ -122,6 +126,7 @@ with open(output_filename, 'w', newline='') as csvfile:
     fieldnames = [
         "system_time",
         "nominal_time",
+        "loop_time",
         "rpm",
         "oil_press",
         "oil_temp",
@@ -211,7 +216,8 @@ with open(output_filename, 'w', newline='') as csvfile:
             if current_time >= next_log_time:
                 fields = {
                     "system_time": current_time,
-                    "nominal_time": next_log_time
+                    "nominal_time": next_log_time,
+                    "loop_time": current_time - last_log_time,
                     "rpm": rpm,
                     "oil_press": oil_press,
                     "oil_temp": oil_temp,
@@ -230,6 +236,7 @@ with open(output_filename, 'w', newline='') as csvfile:
                 }
                 csv_writer.writerow(fields)
                 next_log_time += LOG_INTERVAL
+                last_log_time = current_time
                 # if more than one LOG_INTERVAL has elapsed, repeat the observation as MoTeC is expecting a constant log rate.
                 while current_time >= next_log_time:
                     logger.warn("Loop took longer than LOG_INTERVAL; repeating measurements")
