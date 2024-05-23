@@ -32,8 +32,6 @@ logging.basicConfig(filename=log_file_name, format="%(asctime)s %(message)s", fi
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-KNOTS_TO_MPH = 1.15078
-
 cpu = gpiozero.CPUTemperature()
 
 rpm = None
