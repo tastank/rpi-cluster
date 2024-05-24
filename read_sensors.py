@@ -47,6 +47,16 @@ gforce_y = None
 gforce_z = None
 gps_utc_date = None
 gps_utc_time = None
+cumulative_lap_distance = 0
+lap_number = 0
+beacon = None
+
+# TODO don't hardcode this
+# TODO a track with a finish line not oriented directly EW or NS will be more complicated
+# these numbers are significantly off-track, to allow for GPS error and pit stops
+ROAD_AMERICA_FINISH_LINE_LEFT_LONGITUDE = -87.989493
+ROAD_AMERICA_FINISH_LINE_RIGHT_LONGITUDE = -87.990064
+ROAD_AMERICA_FINISH_LINE_LATITUDE = 43.797913
 
 # The other fields are filtered on the Arduino. They should probably be filtered here, or maybe even in the display application.
 WATER_PRESS_FILTER_SAMPLE_COUNT = 10
@@ -124,7 +134,9 @@ next_log_time = int(time.time()) + 1
 output_filename = os.path.join(TELEMETRY_DIR, "{:04}.csv".format(log_number))
 logger.info("Starting CSV output to {}".format(output_filename))
 
+laptime_start = time.time()
 last_racebox_update = time.time()
+previous_latitude = 0
 
 with open(output_filename, 'w', newline='') as csvfile:
     fieldnames = [
@@ -148,6 +160,9 @@ with open(output_filename, 'w', newline='') as csvfile:
         "gforce_x",
         "gforce_y",
         "gforce_z",
+        "beacon",
+        "lap_number",
+        "cumulative_lap_distance",
         "repeated",
     ]
     csv_writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -171,7 +186,20 @@ with open(output_filename, 'w', newline='') as csvfile:
                     gforce_z = racebox_data["gforce_z"]
                     volts = racebox_data["input_voltage"]
                     send_zmqpp("VOLTS:{}".format(volts))
+                    current_time = time.time()
+                    cumulative_lap_distance += mph * (current_time - last_racebox_update) / 3600.0
                     last_racebox_update = time.time()
+                    # TODO more hardcoding to remove; should maybe just save this for the analysis script
+                    if longitude < ROAD_AMERICA_FINISH_LINE_LEFT_LONGITUDE and longitude > ROAD_AMERICA_FINISH_LINE_RIGHT_LONGITUDE and latitude < ROAD_AMERICA_FINISH_LINE_LATITUDE and previous_latitude > ROAD_AMERICA_FINISH_LINE_LATITUDE and time.time() - laptime_start > 30:
+                        laptime_end = current_time
+                        beacon = 1
+                        laptime = laptime_end - laptime_start
+                        lap_number += 1
+                        laptime_start = laptime_end
+                        cumulative_lap_distance = 0
+                    else:
+                        beacon = 0
+                    previous_latitude = latitude
                 except zmq.ZMQError:
                     break
 
@@ -245,6 +273,9 @@ with open(output_filename, 'w', newline='') as csvfile:
                     "gforce_x": gforce_x,
                     "gforce_y": gforce_y,
                     "gforce_z": gforce_z,
+                    "beacon": beacon,
+                    "lap_number": lap_number,
+                    "cumulative_lap_distance": cumulative_lap_distance,
                     "repeated": 0,
                 }
                 csv_writer.writerow(fields)
