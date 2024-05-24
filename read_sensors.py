@@ -12,15 +12,15 @@ import zmq
 
 import racebox
 
-LOG_DIR = "/home/pi/log/"
-TELEMETRY_DIR = "/home/pi/car_log/"
+LOG_DIR = "/home/pi/log/read_sensors/"
+TELEMETRY_DIR = "/home/pi/log/telemetry/"
 
-log_file_name_template = "read_sensors_{:04}.log"
+log_file_name_template = "{:04}.log"
 last_log_number = 0
 log_files = sorted(os.listdir(LOG_DIR))
 if len(log_files) > 0:
     last_log_file_name = log_files[-1]
-    last_log_number = int(last_log_file_name.split(".")[0].split("_")[-1])
+    last_log_number = int(last_log_file_name.split(".")[0])
 log_number = last_log_number + 1
 
 log_file_name = os.path.join(LOG_DIR, log_file_name_template.format(log_number))
