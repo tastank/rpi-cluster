@@ -70,8 +70,6 @@ echo "boot_delay=0" >> /boot/config.txt
 systemctl disable triggerhappy.service
 systemctl disable salt-master.service
 systemctl disable raspi-config.service
-# this is probably going to mean ssh pi@raspberrypi doesn't work
-systemctl disable avahi-daemon.service
 systemctl disable systemd-timesyncd.service
 systemctl disable dphys-swapfile.service
 systemctl disable apt-daily.service
