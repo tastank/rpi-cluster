@@ -123,6 +123,9 @@ next_log_time = int(time.time()) + 1
 
 output_filename = os.path.join(TELEMETRY_DIR, "{:04}.csv".format(log_number))
 logger.info("Starting CSV output to {}".format(output_filename))
+
+last_racebox_update = time.time()
+
 with open(output_filename, 'w', newline='') as csvfile:
     fieldnames = [
         "system_time",
@@ -168,7 +171,7 @@ with open(output_filename, 'w', newline='') as csvfile:
                     gforce_z = racebox_data["gforce_z"]
                     volts = racebox_data["input_voltage"]
                     send_zmqpp("VOLTS:{}".format(volts))
-                    last_raebox_update = time.time()
+                    last_racebox_update = time.time()
                 except zmq.ZMQError:
                     break
 
