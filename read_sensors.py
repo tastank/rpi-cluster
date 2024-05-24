@@ -247,6 +247,8 @@ with open(output_filename, 'w', newline='') as csvfile:
                             logger.info(message)
                     except ValueError:
                         logger.error(message)
+                    except UnicodeDecodeError:
+                        logger.error("Unable to decode message.")
             except AttributeError:
                 pass
             # use a consistent time for the following checks
