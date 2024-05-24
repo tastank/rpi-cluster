@@ -61,6 +61,8 @@ apt install python3-pip -y
 pip install pyserial
 # Install 0MQ for Python
 pip install pyzmq
+# Install Python BLE limbrary
+pip install bleak
 
 echo "================Applying fast boot changes================"
 echo "disable_splash=1" >> /boot/config.txt
