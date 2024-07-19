@@ -42,9 +42,6 @@ WATER_PRESS_FILTER_SAMPLE_COUNT = 10
 water_press_filter_samples = [0]*WATER_PRESS_FILTER_SAMPLE_COUNT
 water_press_filter_current_sample = 0
 
-start = time.time()
-last_log_time = time.time()
-
 context = zmq.Context()
 socket = context.socket(zmq.PUSH)
 socket.connect("tcp://localhost:9961")
@@ -116,11 +113,15 @@ logger.info("Read UTC time from GPS ({}). Correcting log filename.".format(gps_t
 # logging seems to play nicely with this, so it will just continue to log to the new file
 os.rename(log_file_name, os.path.join(LOG_DIR, "read_sensors_{}.log".format(gps_time)))
 
+# I'm OK with missing a second of data to not log a bunch of repeats to fill the gap between the floor of the timestamp and the actual start time
+next_log_time = int(time.time()) + 1
+
 output_filename = os.path.join(TELEMETRY_DIR, "{}.csv".format(gps_time))
 logger.info("Starting CSV output to {}".format(output_filename))
 with open(output_filename, 'w', newline='') as csvfile:
     fieldnames = [
         "system_time",
+        "nominal_time",
         "rpm",
         "oil_press",
         "oil_temp",
@@ -135,6 +136,7 @@ with open(output_filename, 'w', newline='') as csvfile:
         "alt",
         "mph",
         "track",
+        "repeated",
     ]
     csv_writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     csv_writer.writeheader()
@@ -206,10 +208,10 @@ with open(output_filename, 'w', newline='') as csvfile:
                 pass
             # use a consistent time for the following checks
             current_time = time.time()
-            if current_time - last_log_time >= LOG_INTERVAL:
-                last_log_time += LOG_INTERVAL
+            if current_time >= next_log_time:
                 fields = {
-                    "system_time": time.time(),
+                    "system_time": current_time,
+                    "nominal_time": next_log_time
                     "rpm": rpm,
                     "oil_press": oil_press,
                     "oil_temp": oil_temp,
@@ -223,14 +225,18 @@ with open(output_filename, 'w', newline='') as csvfile:
                     "lon": longitude,
                     "alt": altitude,
                     "mph": mph,
-                    "track": track
+                    "track": track,
+                    "repeated": 0,
                 }
                 csv_writer.writerow(fields)
+                next_log_time += LOG_INTERVAL
                 # if more than one LOG_INTERVAL has elapsed, repeat the observation as MoTeC is expecting a constant log rate.
-                while current_time - last_log_time >= LOG_INTERVAL:
+                while current_time >= next_log_time:
                     logger.warn("Loop took longer than LOG_INTERVAL; repeating measurements")
-                    last_log_time += LOG_INTERVAL
+                    fields["nominal_time"] = next_log_time
+                    fields["repeated"] = 1
                     csv_writer.writerow(fields)
+                    next_log_time += LOG_INTERVAL
 
 
             time.sleep(0.01)
