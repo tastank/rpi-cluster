@@ -34,32 +34,31 @@ logger.setLevel(logging.INFO)
 
 cpu = gpiozero.CPUTemperature()
 
-rpm = None
-oil_temp = None
-oil_temp_filtered = None
-oil_press = None
-oil_press_filtered = None
-water_temp = None
-water_temp_filtered = None
-water_press = None
-water_press_filtered = None
-fuel = None
-fuel_qty_filtered = None
-mph = None
-latitude = None
-longitude = None
-altitude = None
-volts = None
-track = None
-# initializing these to None may cause an error when checking G force to determine whether the fuel reading should be ignored.
+rpm = 0
+oil_temp = 0
+oil_temp_filtered = 0
+oil_press = 0
+oil_press_filtered = 0
+water_temp = 0
+water_temp_filtered = 0
+water_press = 0
+water_press_filtered = 0
+fuel = 0
+fuel_qty_filtered = 0
+mph = 0
+latitude = 0
+longitude = 0
+altitude = 0
+volts = 0
+track = 0
 gforce_x = 0
 gforce_y = 0
 gforce_z = 0
-gps_utc_date = None
-gps_utc_time = None
+gps_utc_date = ""
+gps_utc_time = ""
 cumulative_lap_distance = 0
 lap_number = 0
-beacon = None
+beacon = 0
 
 # TODO don't hardcode this
 # TODO a track with a finish line not oriented directly EW or NS will be more complicated
