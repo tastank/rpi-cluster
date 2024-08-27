@@ -6,7 +6,7 @@ void print_debug(std::string str) {
 }
 
 void print_debug(const char *str) {
-#ifdef DEBUG
+#ifdef DEBUG_CLUSTER
     std::cout << str;
 #endif
 }

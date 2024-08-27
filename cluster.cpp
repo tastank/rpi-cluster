@@ -19,8 +19,8 @@
 #include "inipp.h"
 // TODO this looks like it might be better https://github.com/SSARCandy/ini-cpp
 
-//#define DEBUG
-//#define DEBUG_FPS
+//#define DEBUG_CLUSTER
+//#define DEBUG_CLUSTER_FPS
 
 int main() {
 
@@ -274,7 +274,7 @@ int main() {
 
         BeginDrawing();
         ClearBackground(BLACK);
-#ifdef DEBUG_FPS
+#ifdef DEBUG_CLUSTER_FPS
         DrawFPS(200, 20);
 #endif
 
