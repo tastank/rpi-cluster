@@ -4,6 +4,8 @@ After=multi-user.target
 
 [Service]
 Restart=on-failure
+StartLimitIntervalSec=1
+StartLimitBurst=10
 ExecStart=python /home/pi/rpi-cluster/racebox.py > /home/pi/rpi-cluster/racebox.log
 ExecStopPost=bluetoothctl disconnect
 

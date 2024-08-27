@@ -213,6 +213,7 @@ class RaceBoxData:
         self.serial_number = sn
 
     async def read_racebox(self, logger):
+        logger.info("Setting up ZMQ socket...")
         context = zmq.Context()
         socket = context.socket(zmq.PUSH)
         socket.connect("tcp://localhost:9962")
@@ -226,6 +227,7 @@ class RaceBoxData:
 
             return False
 
+        logger.info("Attempting to find RaceBox device...")
         device = await BleakScanner.find_device_by_filter(match_racebox)
 
         if device is None:
@@ -342,10 +344,13 @@ if __name__ == "__main__":
 
     while True:
         try:
+            logger.info("Trying to run read_racebox...")
             asyncio.run(RaceBoxData(sn).read_racebox(logger))
         except asyncio.CancelledError:
             # task is cancelled on disconnect, so we ignore this error
             logger.error("Device disconnected; retrying...")
             pass
-        except bleak.exc.BleakDBusError:
+        except bleak.exc.BleakDBusError as e:
             logger.error("bleak.exc.BleakDBusError again; retrying...")
+            # This error causes the script to lock up for unknown reasons, however restarting it seems to get past the lock. Let the systemd restart it after it fails.
+            raise e
