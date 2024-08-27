@@ -34,7 +34,7 @@ log_number = last_log_number + 1
 log_file_name = os.path.join(LOG_DIR, log_file_name_template.format(log_number))
 logging.basicConfig(filename=log_file_name, format="%(asctime)s %(message)s", filemode='w')
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 config = configparser.ConfigParser()
 config.read(CONFIG_FILE)
