@@ -8,6 +8,7 @@
 
 #include <zmqpp/zmqpp.hpp>
 
+#include "logging.h"
 #include "Label.h"
 #include "DigitalGauge.h"
 #include "RectGauge.h"
@@ -23,9 +24,7 @@
 
 int main() {
 
-#ifdef DEBUG
-    std::cout << "Initializing zmqpp...\n";
-#endif
+    print_debug("Initializing zmqpp...\n");
 
     const std::string endpoint = "tcp://*:9961";
     zmqpp::context context;
@@ -37,29 +36,23 @@ int main() {
     const int SCREEN_WIDTH = 1024;
     const int SCREEN_HEIGHT = 600;
 
-#ifdef DEBUG
-    std::cout << "Initializing Raylib window...\n";
-#endif
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "");
-#ifdef DEBUG
-    std::cout << "Finished Raylib initialization.\n";
-#endif
+    print_debug("Initializing Raylib window...\n");
 
-#ifdef DEBUG
-    std::cout << "Loading font...\n";
-#endif
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "");
+
+    print_debug("Finished Raylib initialization.\n");
+
+
+    print_debug("Loading font...\n");
     Font font = LoadFontEx("/home/pi/rpi-cluster/resources/fonts/SimplyMono-Bold.ttf", 144.0f, NULL, 0);
     //Font font = LoadFont("resources/fonts/SimplyMono-Bold.ttf");
     SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR);
-#ifdef DEBUG
-    std::cout << "Setting target FPS...\n";
-#endif
+
+    print_debug("Setting target FPS...\n");
     SetTargetFPS(30);
     Color text_color = WHITE;
 
-#ifdef DEBUG
-    std::cout << "Defining gauges...\n";
-#endif
+    print_debug("Defining gauges...\n");
 
     inipp::Ini<char> ini;
     std::ifstream is("/home/pi/rpi-cluster/rpi-cluster.conf");
@@ -225,9 +218,7 @@ int main() {
     time_t start_time = std::time(NULL);
 
     while (!WindowShouldClose()) {
-#ifdef DEBUG
-        std::cout << "Starting loop.\n";
-#endif
+        print_debug("Starting loop.\n");
 
         zmqpp::message message;
 
@@ -240,9 +231,9 @@ int main() {
             if (text == "STOP") {
                 return 0;
             }
-#ifdef DEBUG
-            std::cout << text << '\n';
-#endif
+            print_debug(text);
+            print_debug("\n");
+
             std::string param_name;
             float param_value;
             int index = text.find(':');
@@ -268,17 +259,17 @@ int main() {
             // if (parameter_values.find(param_name) != parameter_values.end()) {
                 parameter_values[param_name] = param_value;
             //} else {
-            //    std::cout << "Unknown parameter: " << param_name << '\n';
+            //    print_debug("Unknown parameter: ");
+            //    print_debug(param_name);
+            //    print_debug("\n");
             //}
 
         }
-#ifdef DEBUG
         if (message_count == 0) {
-            std::cout << "No message received.\n";
+            print_debug("No message received.\n");
         } else {
-            std::cout << "Finished reading data.\n";
+            print_debug("Finished reading data.\n");
         }
-#endif
 
 
         BeginDrawing();
@@ -324,16 +315,12 @@ int main() {
             }
         }
 
-#ifdef DEBUG
-        std::cout << "Drawing labels...\n";
-#endif
+        print_debug("Drawing labels...\n");
         for (Label *label : labels) {
             label->draw();
         }
 
-#ifdef DEBUG
-        std::cout << "Drawing gauges...\n";
-#endif
+        print_debug("Drawing gauges...\n");
         for (Gauge *gauge : gauges) {
             if (parameter_values.find(gauge->get_parameter_name()) != parameter_values.end()) {
                 gauge->set_value(parameter_values[gauge->get_parameter_name()]);
@@ -341,9 +328,6 @@ int main() {
             gauge->draw();
         }
 
-#ifdef DEBUG
-        std::cout << "Finished drawing.\n";
-#endif
         EndDrawing();
     }
     UnloadFont(font);
