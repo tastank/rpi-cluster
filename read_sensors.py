@@ -258,7 +258,7 @@ with open(output_filename, 'w', newline='') as csvfile:
                     break
 
             try:
-                while arduino.in_waiting > 0:
+                while arduino is not None and arduino.in_waiting > 0:
                     try:
                         # TODO make this faster. May be an Arduino limitation, but it's slowing down the whole loop considerably (0.05-0.1s)
                         # splitting it off into yet another script and using more zmq communication may be the answer to accomplish this without moving permanently to async hell
