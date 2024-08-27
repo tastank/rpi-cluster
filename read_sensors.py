@@ -18,7 +18,7 @@ import telemetry_upload
 
 start_time = time.time()
 
-CONFIG_FILE = "/home/pi/rpi-cluster/rpi-cluster.conf"
+CONFIG_FILE = "/home/pi/rpi-cluster/web.conf"
 LOG_DIR = "/home/pi/log/read_sensors/"
 TELEMETRY_DIR = "/home/pi/log/telemetry/"
 os.umask(0)
