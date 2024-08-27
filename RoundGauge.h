@@ -1,5 +1,6 @@
 
-#include <initializer_list>
+#include <string>
+#include <vector>
 
 #include <raylib.h>
 
@@ -20,7 +21,7 @@ class RoundGauge : public Gauge {
 
 public:
     float size; // TODO Should probably be private
-    RoundGauge(const char *name, int x, int y, int size, int numdigits, int numranges, std::initializer_list<float> bounds, std::initializer_list<State> states, Font font);
+    RoundGauge(std::string name, int x, int y, int size, int numdigits, std::vector<float> bounds, std::vector<State> states, Font font);
     void draw();
 };
 

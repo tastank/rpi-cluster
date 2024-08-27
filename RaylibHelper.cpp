@@ -1,6 +1,8 @@
 
 #include "RaylibHelper.h"
 
+#include <string>
+
 #include <raylib.h>
 
 void DrawTextExAlign(Font font, const char *text, Vector2 pos, float size, float spacing, Color color, HAlign h_align, VAlign v_align) {
@@ -24,6 +26,10 @@ void DrawTextExAlign(Font font, const char *text, Vector2 pos, float size, float
     pos.x += offset.x;
     pos.y += offset.y;
     DrawTextEx(font, text, pos, size, spacing, color);
+}
+
+void DrawTextExAlign(Font font, std::string text, Vector2 pos, float size, float spacing, Color color, HAlign h_align, VAlign v_align) {
+    DrawTextExAlign(font, text.c_str(), pos, size, spacing, color, h_align, v_align);
 }
 
 float get_max_text_size(char *str, Font font, float width) {

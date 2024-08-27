@@ -1,15 +1,22 @@
 #include <ctime>
+#include <fstream>
 #include <iostream>
 #include <string>
+#include <sstream>
 
 #include <raylib.h>
 
 #include <zmqpp/zmqpp.hpp>
 
+#include "Label.h"
 #include "DigitalGauge.h"
 #include "RectGauge.h"
 #include "RoundGauge.h"
 #include "RaylibHelper.h"
+
+// https://github.com/mcmtroffaes/inipp
+#include "inipp.h"
+// TODO this looks like it might be better https://github.com/SSARCandy/ini-cpp
 
 //#define DEBUG
 //#define DEBUG_FPS
@@ -53,153 +60,172 @@ int main() {
 #ifdef DEBUG
     std::cout << "Defining gauges...\n";
 #endif
-    RoundGauge tachometer(
-        "RPM",
-        512.0f, 300.0f,
-        500.0f,
-        4,
-        4,
-        {0.0f, 1500.0f, 5000.0f, 6000.0f, 7500.0f},
-        {WARN, OK, WARN, CRIT},
-        font
-    );
-    RoundGauge oil_press_gauge(
-        "OIL PRESS",
-        100.0f, 500.0f,
-        150.0f,
-        3,
-        4,
-        {0.0f, 10.0f, 20.0f, 80.0f, 100.0f},
-        {CRIT, WARN, OK, WARN},
-        font
-    );
-    RectGauge oil_temp_gauge(
-        "OIL TEMP",
-        SCREEN_WIDTH-140+35.0f, 450.0f,
-        (Vector2) {40.0f, 150.0f},
-        VERTICAL,
-        3,
-        4,
-        {0.0f, 200.0f, 240.0f, 260.0f, 330.0f},
-        {WARN, OK, WARN, CRIT}
-    );
-    DigitalGauge oil_temp_display(
-        "FUEL",
-        oil_temp_gauge.x + 20, 540,
-        50.0f,
-        3, 0,
-        1,
-        {0.0f, 250.0f},
-        {OK},
-        font
-    );
-    RectGauge water_temp_gauge(
-        "WATER TEMP",
-        SCREEN_WIDTH-140-35.0f, 450.0f,
-        (Vector2) {40.0f, 150.0f},
-        VERTICAL,
-        3,
-        4,
-        {0.0f, 140.0f, 200.0f, 220.0f, 250.0f},
-        {WARN, OK, WARN, CRIT}
-    );
-    DigitalGauge water_temp_display(
-        "FUEL",
-        water_temp_gauge.x + 20, oil_temp_display.y,
-        50.0f,
-        3, 0,
-        1,
-        {0.0f, 250.0f},
-        {OK},
-        font
-    );
-    RoundGauge water_press_gauge(
-        "WATER PRESS",
-        water_temp_gauge.x, oil_temp_gauge.y,
-        150.0f,
-        3,
-        5,
-        {0.0f, 8.0f, 11.0f, 15.0f, 18.0f, 20.0f},
-        {WARN, WARN, OK, WARN, CRIT},
-        font
-    );
-    DigitalGauge speedometer(
-        "MPH",
-        512.0f, 275.0f,
-        120.0f,
-        3, 0,
-        1,
-        {0.0f, 120.0f},
-        {OK},
-        font
 
-    );
-    RectGauge fuel_qty_gauge(
-        "FUEL",
-        220, 300,
-        (Vector2) {60.0f, 400.0f},
-        VERTICAL,
-        3,
-        3,
-        {0.0f, 1.5f, 3.0f, 12.0f},
-        {CRIT, WARN, OK}
-    );
-    DigitalGauge fuel_qty_display(
-        "FUEL",
-        220, 530,
-        60.0f,
-        3, 1,
-        1,
-        {0.0f, 12.0f},
-        {OK},
-        font
-    );
-    DigitalGauge voltmeter(
-        "VOLTS",
-        1024-150, 100,
-        100.0f,
-        4, 1,
-        4,
-        {0.0f, 12.0f, 13.0f, 14.4f, 16.0f},
-        {CRIT, WARN, OK, CRIT},
-        font
-    );
-    DigitalGauge stint_timer(
-        "STINT",
-        voltmeter.x, voltmeter.y + 100,
-        100.0f,
-        4, 2,
-        1,
-        {0.0f, 3.0f},
-        {OK},
-        font
-    );
+    inipp::Ini<char> ini;
+    std::ifstream is("rpi-cluster.conf");
+    ini.parse(is);
+
+    /////////// DEFINE GAUGES /////////////////////////////////////////////
+    std::vector<Gauge*> gauges;
+    std::map<std::string, float> parameter_values;
+
+    std::string gauge_section;
+    int gauge_index = 0;
+
+    while (true) {
+        gauge_section = std::string("GAUGE_") + std::to_string(gauge_index);
+        if (ini.sections.find(gauge_section) == ini.sections.end()) {
+            break;
+        }
+        // these values are common to all gauges
+        std::string type;
+        std::string display_name;
+        std::string parameter_name;
+        float center_x = 0.0f;
+        float center_y = 0.0f;
+        std::string thresholds_str;
+        std::string states_str;
+
+        inipp::get_value(ini.sections[gauge_section], "type", type);
+        inipp::get_value(ini.sections[gauge_section], "display_name", display_name);
+        inipp::get_value(ini.sections[gauge_section], "parameter_name", parameter_name);
+        // initialize the parameter
+        parameter_values[parameter_name] = 0.0f;
+        inipp::get_value(ini.sections[gauge_section], "center_x", center_x);
+        inipp::get_value(ini.sections[gauge_section], "center_y", center_y);
+        inipp::get_value(ini.sections[gauge_section], "thresholds", thresholds_str);
+        inipp::get_value(ini.sections[gauge_section], "states", states_str);
+
+        std::vector<float> thresholds;
+        // TODO use a template function to do this with arbitrary types and not have to repeat the code for the states list.
+        //  function signature would be template<typename T> std::vector<T> csv_to_vector(std::string csv)
+        if (thresholds_str.size() > 0) {
+            // from https://stackoverflow.com/a/10861816
+            std::stringstream thresholds_stream(thresholds_str);
+            // TODO allow different types
+            while (thresholds_stream.good()) {
+                std::string substr;
+                std::getline(thresholds_stream, substr, ',');
+                float threshold = std::stof(substr);
+                thresholds.push_back(threshold);
+            }
+        }
+        // TODO this should be a vector of States, not std::strings
+        std::vector<State> states;
+        if (states_str.size() > 0) {
+            // from https://stackoverflow.com/a/10861816
+            std::stringstream states_stream(states_str);
+            while (states_stream.good()) {
+                std::string state_str;
+                std::getline(states_stream, state_str, ',');
+                State state = str_to_state(state_str);
+                states.push_back(state);
+            }
+        }
+        if (type == "round") {
+            float size = 0.0f;
+            int display_digits = -1;
+            int decimal_digits = 0;
+
+            inipp::get_value(ini.sections[gauge_section], "size", size);
+            inipp::get_value(ini.sections[gauge_section], "display_digits", display_digits);
+            inipp::get_value(ini.sections[gauge_section], "decimal", decimal_digits);
+
+            RoundGauge gauge(
+                display_name,
+                center_x, center_y,
+                size,
+                display_digits,
+                thresholds,
+                states,
+                font
+            );
+            gauges.push_back(&gauge);
+
+        } else if (type == "rect") {
+            float size_x = 0.0f;
+            float size_y = 0.0f;
+            int display_digits;
+            std::string orientation_str;
+            // TODO display_digits is not actually supported now; add display option to the gauge rather than having to define a separate digital gauge
+            inipp::get_value(ini.sections[gauge_section], "size_x", size_x);
+            inipp::get_value(ini.sections[gauge_section], "size_y", size_y);
+            inipp::get_value(ini.sections[gauge_section], "display_digits", display_digits);
+            inipp::get_value(ini.sections[gauge_section], "orientation", orientation_str);
+
+            RectGauge gauge(
+                display_name, 
+                center_x,
+                center_y,
+                (Vector2) {size_x, size_y},
+                str_to_orientation(orientation_str),
+                display_digits,
+                thresholds,
+                states
+            );
+            gauges.push_back(&gauge);
+        } else if (type == "digital") {
+            float size = 0.0f;
+            int display_digits = -1;
+            int decimal_digits = -1;
+
+            inipp::get_value(ini.sections[gauge_section], "size", size);
+            inipp::get_value(ini.sections[gauge_section], "digits", display_digits);
+            inipp::get_value(ini.sections[gauge_section], "decimal", decimal_digits);
+
+            DigitalGauge gauge(
+                display_name,
+                center_x,
+                center_y,
+                size,
+                display_digits,
+                decimal_digits,
+                thresholds,
+                states,
+                font
+            );
+            gauges.push_back(&gauge);
+        }
+
+        gauge_index++;
+    }
+
+    /////////// DEFINE LABELS /////////////////////////////////////////////
+    std::vector<Label*> labels;
+
+    std::string label_section;
+    int label_index = 0;
+
+    while (true) {
+        label_section = std::string("TEXT_") + std::to_string(gauge_index);
+        if (ini.sections.find(label_section) == ini.sections.end()) {
+            break;
+        }
+        std::string text;
+        float center_x = 0.0f;
+        float center_y = 0.0f;
+        float size = 0.0f;
+
+        inipp::get_value(ini.sections[label_section], "text", text);
+        inipp::get_value(ini.sections[label_section], "center_x", center_x);
+        inipp::get_value(ini.sections[label_section], "center_y", center_y);
+        inipp::get_value(ini.sections[label_section], "size", size);
+
+        Label label(text, center_x, center_y, size, font);
+
+        labels.push_back(&label);
+
+        label_index++;
+    }
+
+
+
+
 
 #ifdef DEBUG
     std::cout << "Pushing gauges to vector...\n";
 #endif
 
-
-    std::vector<Gauge*> gauges;
-    gauges.push_back(&tachometer);
-    gauges.push_back(&oil_press_gauge);
-    gauges.push_back(&oil_temp_gauge);
-    gauges.push_back(&water_press_gauge);
-    gauges.push_back(&water_temp_gauge);
-    gauges.push_back(&speedometer);
-    gauges.push_back(&fuel_qty_gauge);
-    gauges.push_back(&voltmeter);
-    gauges.push_back(&stint_timer);
-
-    float oil_press;
-    float oil_temp;
-    float water_press;
-    float water_temp;
-    float rpm;
-    float mph;
-    float fuel_qty;
-    float volts;
-    float stint_time;
 
     bool warn_flash_on = true;
 
@@ -233,43 +259,18 @@ int main() {
             }
             message_count++;
 
-            if (param_name == "OP") {
-                oil_press = param_value;
-                oil_press_gauge.set_value(oil_press);
-            } else if (param_name == "OT") {
-                oil_temp = param_value;
-                oil_temp_gauge.set_value(oil_temp);
-                oil_temp_display.set_value(oil_temp);
-            } else if (param_name == "WP") {
-                water_press = param_value;
-                water_press_gauge.set_value(water_press);
-            } else if (param_name == "WT") {
-                water_temp = param_value;
-                water_temp_gauge.set_value(water_temp);
-                water_temp_display.set_value(water_temp);
-            } else if (param_name == "RPM") {
-                rpm = param_value;
-                tachometer.set_value(rpm);
-            } else if (param_name == "MPH") {
-                mph = param_value;
-                speedometer.set_value(mph);
-            } else if (param_name == "FUEL") {
-                fuel_qty = param_value;
-                fuel_qty_gauge.set_value(fuel_qty);
-                fuel_qty_display.set_value(fuel_qty);
-            } else if (param_name == "VOLTS") {
-                volts = param_value;
-                voltmeter.set_value(volts);
+            // special cases
+            if (param_name == "FLASH") {
+                warn_flash_on = (param_value > 0.9f);
             } else if (param_name == "TIME") {
                 // TODO treat this like a string ("H:MM"), not a float.
                 // this is a hack to show H.MM
-                stint_time = param_value;
-                int hours = (int) (stint_time / 60.0f);
-                int minutes = (int) stint_time % 60;
-                float hours_minutes = (float) hours + minutes/100.0f;
-                stint_timer.set_value(hours_minutes);
-            } else if (param_name == "FLASH") {
-                warn_flash_on = (param_value > 0.9f);
+                int hours = (int) (param_value / 60.0f);
+                int minutes = (int) param_value % 60;
+                param_value = (float) hours + minutes/100.0f;
+            }
+            if (parameter_values.find(param_name) != parameter_values.end()) {
+                parameter_values[param_name] = param_value;
             } else {
                 std::cout << "Unknown parameter: " << param_name << '\n';
             }
@@ -290,7 +291,6 @@ int main() {
         DrawFPS(200, 20);
 #endif
 
-        Vector2 crit_label_pos = {tachometer.x + 20, tachometer.y + 120};
         // set background if any state is CRIT
         bool black_text = false;
         for (Gauge *gauge : gauges) {
@@ -304,6 +304,8 @@ int main() {
             }
         }
 
+        // TODO parameterize this in the conf file
+        Vector2 crit_label_pos = {532, 420};
         for (Gauge *gauge : gauges) {
             State state = gauge->get_state();
             if (gauge->get_state() == CRIT || gauge->get_state() == STALE) {
@@ -323,38 +325,15 @@ int main() {
         std::cout << "Drawing labels...\n";
 #endif
 
-        // Labels
-#define MAJOR_LABEL_SIZE 36.0f
-#define MINOR_LABEL_SIZE 18.0f
-
-        DrawTextExAlign(font, "OIL PRESS", {oil_press_gauge.x, SCREEN_HEIGHT/2}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
-        DrawPixel(oil_press_gauge.x, SCREEN_HEIGHT/2, MAGENTA);
-        //DrawTextExAlign(font, "WATER", {water_temp_gauge.x, SCREEN_HEIGHT/2}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
-        //DrawTextExAlign(font, "PRESS", {oil_press_gauge.x, oil_press_gauge.y-oil_press_gauge.size/2-30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
-        DrawTextExAlign(font, "OT", {oil_temp_gauge.x + 20.0f, oil_temp_gauge.y-30.0f}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
-        //DrawTextExAlign(font, "PRESS", {water_press_gauge.x, water_press_gauge.y+water_press_gauge.size/2+30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
-        DrawTextExAlign(font, "WT", {water_temp_gauge.x + 20.0f, water_temp_gauge.y-30.0f}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
-        // I should probably change this behavior, but to make drawing easier RectGauge changes the x and y values to one of the corners instead of the center. DigitalGauge does not, so use the digital fuel gauge for alignment.
-        DrawTextExAlign(font, "FUEL", {fuel_qty_display.x, 70.0f}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
-        DrawTextExAlign(font, "VOLTS", {voltmeter.x, voltmeter.y + 30.0f}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
-        DrawTextExAlign(font, "STINT", {stint_timer.x, stint_timer.y + 30.0f}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
-
-
 #ifdef DEBUG
         std::cout << "Drawing gauges...\n";
 #endif
-        tachometer.draw();
-        oil_press_gauge.draw();
-        oil_temp_gauge.draw();
-        oil_temp_display.draw();
-        //water_press_gauge.draw();
-        water_temp_gauge.draw();
-        water_temp_display.draw();
-        speedometer.draw();
-        fuel_qty_gauge.draw();
-        fuel_qty_display.draw();
-        voltmeter.draw();
-        stint_timer.draw();
+        for (Gauge *gauge : gauges) {
+            gauge->draw();
+        }
+        for (Label *label : labels) {
+            label->draw();
+        }
 
 #ifdef DEBUG
         std::cout << "Finished drawing.\n";

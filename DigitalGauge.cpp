@@ -3,7 +3,6 @@
 
 #include <cfloat>
 #include <ctime>
-#include <initializer_list>
 #include <vector>
 #include <string>
 
@@ -11,37 +10,35 @@
 
 #include "RaylibHelper.h"
 
-DigitalGauge::DigitalGauge(const char *name, int x, int y, int size, int numdigits, int numranges, std::initializer_list<float> bounds, std::initializer_list<State> states, Font font) {
-    DigitalGauge(name, x, y, size, numdigits, 0, numranges, bounds, states, font);
+DigitalGauge::DigitalGauge(std::string name, int x, int y, int size, int numdigits, std::vector<float> bounds, std::vector<State> states, Font font) {
+    DigitalGauge(name, x, y, size, numdigits, 0, bounds, states, font);
 }
 
-DigitalGauge::DigitalGauge(const char *name, int x, int y, int size, int numdigits, int numdecimal, int numranges, std::initializer_list<float> bounds, std::initializer_list<State> states, Font font) {
+DigitalGauge::DigitalGauge(std::string name, int x, int y, int size, int numdigits, int numdecimal, std::vector<float> bounds, std::vector<State> states, Font font) {
     this->name = name;
-    std::vector<float> bounds_vector{bounds};
-    std::vector<State> states_vector{states};
     float min = FLT_MAX;
     float max = FLT_MIN;
     std::vector<Range> ranges;
-    for (int c = 0; c < numranges; c++) {
+    for (int c = 0; c < states.size(); c++) {
         Range next_range;
-        next_range.min = bounds_vector[c];
-        next_range.max = bounds_vector[c+1];
-        next_range.state = states_vector[c];
+        next_range.min = bounds[c];
+        next_range.max = bounds[c+1];
+        next_range.state = states[c];
         // They should be sorted, but what if they're not? will anything else fail?
-        if (bounds_vector[c] > max) max = bounds_vector[c];
-        if (bounds_vector[c] < min) min = bounds_vector[c];
+        if (bounds[c] > max) max = bounds[c];
+        if (bounds[c] < min) min = bounds[c];
         ranges.push_back(next_range);
     }
     // The above will have missed the last index
-    if (bounds_vector[numranges] > max) max = bounds_vector[numranges];
-    if (bounds_vector[numranges] < min) min = bounds_vector[numranges];
+    if (bounds[states.size()] > max) max = bounds[states.size()];
+    if (bounds[states.size()] < min) min = bounds[states.size()];
 
     this->x = x;
     this->y = y;
     this->size = size;
     this->num_digits = numdigits;
     this->num_decimal = numdecimal;
-    this->num_ranges = numranges;
+    this->num_ranges = states.size();
     this->ranges = ranges;
     this->min = min;
     this->max = max;

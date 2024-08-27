@@ -6,6 +6,18 @@
 
 #include <raylib.h>
 
+State str_to_state(std::string str) {
+    if (str == "OK") {
+        return OK;
+    } else if (str == "WARN") {
+        return WARN;
+    } else if (str == "CRIT") {
+        return CRIT;
+    } else {
+        return STALE;
+    }
+}
+
 float Gauge::get_min() {
     return min;
 }

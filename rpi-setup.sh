@@ -1,5 +1,9 @@
 #!/bin/sh
 
+# Download inipp library, in the local directory
+git clone https://github.com/mcmtroffaes/inipp.git
+cp inipp/inipp/inipp.h .
+
 # Install raylib and its dependencies
 START_DIR=`pwd`
 # the libraries after the # are needed only on desktop platform installs

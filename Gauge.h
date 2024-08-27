@@ -12,6 +12,8 @@
 
 typedef enum State {OK, WARN, CRIT, STALE} State;
 
+State str_to_state(std::string);
+
 typedef struct Range {
     State state;
     float min, max;
@@ -37,7 +39,7 @@ public:
     float get_max();
     const char *get_name();
     State get_state();
-    void draw();
+    virtual void draw() = 0;
 };
 
 #endif

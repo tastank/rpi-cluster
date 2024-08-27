@@ -3,7 +3,6 @@
 
 #include <cfloat>
 #include <ctime>
-#include <initializer_list>
 #include <vector>
 #include <string>
 
@@ -14,37 +13,41 @@
 // TODO parameterize this?
 #define OUTLINE_STROKE_WIDTH 4.0f
 
-// TODO support non-linear round_gauges
+Orientation str_to_orientation(std::string str) {
+    if (str == "HORIZONTAL") {
+        return HORIZONTAL;
+    } else {
+        return VERTICAL;
+    }
+}
 
-//RectGauge::RectGauge(const char *name, int x, int y, Vector2 size, Orientation orientation, int numdigits, int numranges, std::initializer_list<float> bounds, std::initializer_list<State> states, Font font) {
-RectGauge::RectGauge(const char *name, int x, int y, Vector2 size, Orientation orientation, int numdigits, int numranges, std::initializer_list<float> bounds, std::initializer_list<State> states) {
+//RectGauge::RectGauge(const char *name, int x, int y, Vector2 size, Orientation orientation, int numdigits, int states.size(), std::initializer_list<float> bounds, std::initializer_list<State> states, Font font) {
+RectGauge::RectGauge(std::string name, int x, int y, Vector2 size, Orientation orientation, int numdigits, std::vector<float> bounds, std::vector<State> states) {
     // TODO move some of this repeated code to Gauge
     this->name = name;
-    std::vector<float> bounds_vector{bounds};
-    std::vector<State> states_vector{states};
     float min = FLT_MAX;
     float max = FLT_MIN;
     std::vector<Range> ranges;
-    for (int c = 0; c < numranges; c++) {
+    for (int c = 0; c < states.size(); c++) {
         Range next_range;
-        next_range.min = bounds_vector[c];
-        next_range.max = bounds_vector[c+1];
-        next_range.state = states_vector[c];
+        next_range.min = bounds[c];
+        next_range.max = bounds[c+1];
+        next_range.state = states[c];
         // They should be sorted, but what if they're not? will anything else fail?
-        if (bounds_vector[c] > max) max = bounds_vector[c];
-        if (bounds_vector[c] < min) min = bounds_vector[c];
+        if (bounds[c] > max) max = bounds[c];
+        if (bounds[c] < min) min = bounds[c];
         ranges.push_back(next_range);
     }
     // The above will have missed the last index
-    if (bounds_vector[numranges] > max) max = bounds_vector[numranges];
-    if (bounds_vector[numranges] < min) min = bounds_vector[numranges];
+    if (bounds[states.size()] > max) max = bounds[states.size()];
+    if (bounds[states.size()] < min) min = bounds[states.size()];
 
     this->x = x - size.x / 2;
     this->y = y - size.y / 2;
     this->size = size;
     this->orientation = orientation;
     this->num_digits = numdigits;
-    this->num_ranges = numranges;
+    this->num_ranges = states.size();
     this->ranges = ranges;
     this->min = min;
     this->max = max;
