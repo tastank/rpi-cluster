@@ -52,6 +52,7 @@ water_press = 0
 water_press_filtered = 0
 fuel = 0
 fuel_qty_filtered = 0
+arduino_temp = 0
 mph = 0
 latitude = 0
 longitude = 0
@@ -117,6 +118,7 @@ fieldnames = [
     "water_press_filtered",
     "water_temp",
     "water_temp_filtered",
+    "arduino_temp",
     "volts",
     "fuel",
     "fuel_qty_filtered",
@@ -298,6 +300,8 @@ with open(output_filename, 'w', newline='') as csvfile:
                         elif name == "RPM":
                             rpm = int(value)
                             send_zmqpp("RPM:{}".format(rpm))
+                        elif name == "AT":
+                            arduino_temp = float(value)
                         elif name == "FUEL":
                             fuel = float(value)
                             # fuel sloshes a lot. Ignore the reading any time the car is under significant acceleration.
@@ -339,6 +343,7 @@ with open(output_filename, 'w', newline='') as csvfile:
                     "water_press_filtered": round(water_press_filtered, 1),
                     "water_temp": water_temp,
                     "water_temp_filtered": round(water_temp_filtered, 1),
+                    "arduino_temp": arduino_temp,
                     "volts": volts,
                     "fuel": fuel,
                     "fuel_qty_filtered": round(fuel_qty_filtered, 1),
