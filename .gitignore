@@ -3,3 +3,4 @@ __pycache__/
 cluster
 web.conf
 inipp*
+*.o
