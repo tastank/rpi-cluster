@@ -9,6 +9,7 @@
 #include <zmqpp/zmqpp.hpp>
 
 #include "logging.h"
+
 #include "Label.h"
 #include "DigitalGauge.h"
 #include "RectGauge.h"
@@ -21,6 +22,27 @@
 
 //#define DEBUG_CLUSTER
 //#define DEBUG_CLUSTER_FPS
+
+// std::stof is overloaded and the compiler won't know which definition to use if it is used as a callback, so use this wrapper to help it
+float stof(std::string str) {
+    return std::stof(str);
+}
+
+// it'd be nice to move this and any other potential utility functions to their own source file, but doing that with a generic template will lead to a linker error.
+template<typename T> std::vector<T> csv_to_vector(std::string csv, T (*conversion_function)(std::string)) {
+    std::vector<T> ret;
+    if (csv.size() > 0) {
+        // from https://stackoverflow.com/a/10861816
+        std::stringstream csv_stream(csv);
+        while (csv_stream.good()) {
+            std::string substr;
+            std::getline(csv_stream, substr, ',');
+            T val = conversion_function(substr);
+            ret.push_back(val);
+        }
+    }
+    return ret;
+}
 
 int main() {
 
@@ -86,32 +108,8 @@ int main() {
         inipp::get_value(ini.sections[gauge_section], "thresholds", thresholds_str);
         inipp::get_value(ini.sections[gauge_section], "states", states_str);
 
-        std::vector<float> thresholds;
-        // TODO use a template function to do this with arbitrary types and not have to repeat the code for the states list.
-        //  function signature would be template<typename T> std::vector<T> csv_to_vector(std::string csv)
-        if (thresholds_str.size() > 0) {
-            // from https://stackoverflow.com/a/10861816
-            std::stringstream thresholds_stream(thresholds_str);
-            // TODO allow different types
-            while (thresholds_stream.good()) {
-                std::string substr;
-                std::getline(thresholds_stream, substr, ',');
-                float threshold = std::stof(substr);
-                thresholds.push_back(threshold);
-            }
-        }
-        // TODO this should be a vector of States, not std::strings
-        std::vector<State> states;
-        if (states_str.size() > 0) {
-            // from https://stackoverflow.com/a/10861816
-            std::stringstream states_stream(states_str);
-            while (states_stream.good()) {
-                std::string state_str;
-                std::getline(states_stream, state_str, ',');
-                State state = str_to_state(state_str);
-                states.push_back(state);
-            }
-        }
+        std::vector<float> thresholds = csv_to_vector<float>(thresholds_str, stof);
+        std::vector<State> states = csv_to_vector<State>(states_str, str_to_state);
         if (type == "round") {
             float size = 0.0f;
             int display_digits = -1;
