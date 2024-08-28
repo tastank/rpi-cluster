@@ -59,7 +59,6 @@ RectGauge::RectGauge(std::string name, std::string parameter_name, int x, int y,
     this->ranges = ranges;
     this->min = min;
     this->max = max;
-    // TODO Parameterize these angles
     //this->font = font;
     // TODO parameterize this or at least make it adjustable
     //this->text_size = (Vector2) {30, 12};
