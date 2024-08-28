@@ -32,6 +32,7 @@ protected:
     float value;
     float x, y;
 public:
+    virtual ~Gauge() = default;
     static Color get_color(State);
     float get_value();
     void set_value(float);

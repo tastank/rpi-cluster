@@ -87,6 +87,7 @@ int main() {
     std::string gauge_section;
     int gauge_index = 0;
 
+    // TODO add a limit to ensure this loop exits
     while (true) {
         gauge_section = std::string("GAUGE_") + std::to_string(gauge_index);
         if (ini.sections.find(gauge_section) == ini.sections.end()) {
@@ -189,6 +190,7 @@ int main() {
     std::string label_section;
     int label_index = 0;
 
+    // TODO add a limit to ensure this loop exits
     while (true) {
         label_section = std::string("TEXT_") + std::to_string(label_index);
         if (ini.sections.find(label_section) == ini.sections.end()) {
@@ -325,6 +327,15 @@ int main() {
     }
     UnloadFont(font);
     CloseWindow();
+
+    // deallocate memory
+    for (Gauge *gauge : gauges) {
+        delete gauge;
+    }
+    for (Label *label : labels) {
+        delete label;
+    }
+
     return 0;
 }
 
