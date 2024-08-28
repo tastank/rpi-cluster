@@ -30,7 +30,7 @@ RectGauge::RectGauge(std::string name, std::string parameter_name, int x, int y,
     float max = -FLT_MAX;
     std::vector<Range> ranges;
     if (states.size() > 0) {
-        for (int c = 0; c < states.size(); c++) {
+        for (unsigned long c = 0; c < states.size(); c++) {
             Range next_range;
             next_range.min = bounds[c];
             next_range.max = bounds[c+1];
@@ -67,14 +67,14 @@ RectGauge::RectGauge(std::string name, std::string parameter_name, int x, int y,
 
 void RectGauge::draw() {
     if (std::time(NULL) - last_updated_timestamp > DATA_TIMEOUT) {
-        Vector2 ll = (Vector2) {x, y};
-        Vector2 lr = (Vector2) {x + size.x, y};
-        Vector2 ul = (Vector2) {x, y + size.y};
-        Vector2 ur = (Vector2) {x + size.x, y + size.y};
+        Vector2 ll = {x, y};
+        Vector2 lr = {x + size.x, y};
+        Vector2 ul = {x, y + size.y};
+        Vector2 ur = {x + size.x, y + size.y};
 
         DrawLineEx(ll, ur, BAD_DATA_LINE_THICKNESS, RED);
         DrawLineEx(lr, ul, BAD_DATA_LINE_THICKNESS, RED);
-        DrawRectangleLinesEx((Rectangle) {ll.x, ll.y, size.x, size.y}, BAD_DATA_LINE_THICKNESS, RED);
+        DrawRectangleLinesEx({ll.x, ll.y, size.x, size.y}, BAD_DATA_LINE_THICKNESS, RED);
     } else {
         draw_outline();
         //draw_text_value();
@@ -129,7 +129,7 @@ void RectGauge::draw_outline() {
     float size_available = size.y - OUTLINE_STROKE_WIDTH;
     float x_left = x + OUTLINE_STROKE_WIDTH/2.0f;
     float x_right = x + size.x - OUTLINE_STROKE_WIDTH/2.0f;
-    for (int c = 0; c < ranges.size(); c++) {
+    for (unsigned long c = 0; c < ranges.size(); c++) {
         Color color = get_color(ranges[c].state);
         float min_normalized = (ranges[c].min - min) / (max - min);
         float max_normalized = (ranges[c].max - min) / (max - min);
@@ -138,12 +138,12 @@ void RectGauge::draw_outline() {
         //float y_min = y + size.y - text_size.y - OUTLINE_STROKE_WIDTH/2.0f - min_normalized * size_available;
         //float y_max = y + size.y - text_size.y - OUTLINE_STROKE_WIDTH/2.0f - max_normalized * size_available;
 
-        DrawLineEx((Vector2) {x_left, y_min}, (Vector2) {x_left, y_max}, OUTLINE_STROKE_WIDTH, color);
-        DrawLineEx((Vector2) {x_right, y_min}, (Vector2) {x_right, y_max}, OUTLINE_STROKE_WIDTH, color);
+        DrawLineEx({x_left, y_min}, {x_left, y_max}, OUTLINE_STROKE_WIDTH, color);
+        DrawLineEx({x_right, y_min}, {x_right, y_max}, OUTLINE_STROKE_WIDTH, color);
         if (ranges[c].min == min) {
-            DrawLineEx((Vector2) {x, y_min}, (Vector2) {x + size.x, y_min}, OUTLINE_STROKE_WIDTH, color);
+            DrawLineEx({x, y_min}, {x + size.x, y_min}, OUTLINE_STROKE_WIDTH, color);
         } else if (ranges[c].max == max) {
-            DrawLineEx((Vector2) {x, y_max}, (Vector2) {x + size.x, y_max}, OUTLINE_STROKE_WIDTH, color);
+            DrawLineEx({x, y_max}, {x + size.x, y_max}, OUTLINE_STROKE_WIDTH, color);
         }
     };
 }

@@ -132,13 +132,12 @@ int main() {
             gauges.push_back(gauge);
 
         } else if (type == "rect") {
-            float size_x = 0.0f;
-            float size_y = 0.0f;
+            Vector2 size;
             int display_digits;
             std::string orientation_str;
             // TODO display_digits is not actually supported now; add display option to the gauge rather than having to define a separate digital gauge
-            inipp::get_value(ini.sections[gauge_section], "size_x", size_x);
-            inipp::get_value(ini.sections[gauge_section], "size_y", size_y);
+            inipp::get_value(ini.sections[gauge_section], "size_x", size.x);
+            inipp::get_value(ini.sections[gauge_section], "size_y", size.y);
             inipp::get_value(ini.sections[gauge_section], "display_digits", display_digits);
             inipp::get_value(ini.sections[gauge_section], "orientation", orientation_str);
 
@@ -147,7 +146,7 @@ int main() {
                 parameter_name,
                 center_x,
                 center_y,
-                (Vector2) {size_x, size_y},
+                size,
                 str_to_orientation(orientation_str),
                 display_digits,
                 thresholds,
@@ -213,8 +212,6 @@ int main() {
 
     bool warn_flash_on = true;
 
-    time_t start_time = std::time(NULL);
-
     while (!WindowShouldClose()) {
         print_debug("Starting loop.\n");
 
@@ -276,10 +273,12 @@ int main() {
         DrawFPS(200, 20);
 #endif
 
+        // TODO gauge->get_state is not a trivial {return state;} function, so calling it multiple times is inefficient.
+        //      storing a Map<Gauge, State> would take a bit more overhead but be more efficient
+        //      enqueuing the text to print and using a separate loop for that would also be more efficient.
         // set background if any state is CRIT
         bool black_text = false;
         for (Gauge *gauge : gauges) {
-            State state = gauge->get_state();
             if (gauge->get_state() == CRIT) {
                 if (warn_flash_on) {
                     ClearBackground(MAROON);
@@ -293,7 +292,7 @@ int main() {
         Vector2 crit_label_pos = {532, 420};
         for (Gauge *gauge : gauges) {
             State state = gauge->get_state();
-            if (gauge->get_state() == CRIT || gauge->get_state() == STALE) {
+            if (state == CRIT || state == STALE) {
                 if (black_text) {
                     text_color = BLACK;
                 }else {
@@ -306,7 +305,6 @@ int main() {
         }
         // Print anything in WARN state after anything in CRIT state
         for (Gauge *gauge : gauges) {
-            State state = gauge->get_state();
             if (gauge->get_state() == WARN) {
                 DrawTextEx(font, gauge->get_name().c_str(), crit_label_pos, 36.0f, 0, gauge->get_color(WARN));
                 crit_label_pos.y += 40.0f;

@@ -43,15 +43,18 @@ std::string Gauge::get_parameter_name() {
 }
 
 Color Gauge::get_color(State state) {
+    Color color;
+    // default value
+    color = {0, 255, 255, 255};
     if (state == OK) {
-        return (Color) {32, 192, 64, 255};
+        color = {32, 192, 64, 255};
     } else if (state == WARN) {
-        return (Color) {255, 255, 0, 255};
-    } else if (state == CRIT) {
-        return (Color) {255, 0, 0, 255};
+        color = {255, 255, 0, 255};
+    } else if (state == CRIT || state == STALE) {
+        color = {255, 0, 0, 255};
     }
     // default
-    return (Color) {0, 255, 255, 255};
+    return color;
 }
 
 State Gauge::get_state() {
@@ -61,7 +64,7 @@ State Gauge::get_state() {
     }
     State current_state;
     bool state_found = false;
-    for (int c = 0; c < this->ranges.size(); c++) {
+    for (unsigned long c = 0; c < this->ranges.size(); c++) {
         if (get_value() >= ranges[c].min && get_value() < ranges[c].max) {
             current_state = ranges[c].state;
             state_found = true;

@@ -24,7 +24,7 @@ RoundGauge::RoundGauge(std::string name, std::string parameter_name, int x, int 
     float max = -FLT_MAX;
     std::vector<Range> ranges;
     if (states.size() > 0) {
-        for (int c = 0; c < states.size(); c++) {
+        for (unsigned long c = 0; c < states.size(); c++) {
             Range next_range;
             next_range.min = bounds[c];
             next_range.max = bounds[c+1];
@@ -66,19 +66,19 @@ void RoundGauge::draw() {
         Fill(255, 0, 0, 1);
         Stroke(255, 255, 0, 1);
         Rect(x-size/2, y-size/2, size, size);
-        DrawTextExAlign(font, (char *)get_name(), (Vector2) {x, y}, get_max_text_size((char *)get_name(), font, size*0.8f), 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, (char *)get_name(), {x, y}, get_max_text_size((char *)get_name(), font, size*0.8f), 0, WHITE, CENTER, MIDDLE);
     } else {
         */
         if (std::time(NULL) - last_updated_timestamp > DATA_TIMEOUT) {
             // I'm not sure the names here are accurate, but it'll still draw the X I want.
-            Vector2 ll = (Vector2) {x - size/2.0f, y - size/2.0f};
-            Vector2 ul = (Vector2) {x - size/2.0f, y + size/2.0f};
-            Vector2 lr = (Vector2) {x + size/2.0f, y - size/2.0f};
-            Vector2 ur = (Vector2) {x + size/2.0f, y + size/2.0f};
+            Vector2 ll = {x - size/2.0f, y - size/2.0f};
+            Vector2 ul = {x - size/2.0f, y + size/2.0f};
+            Vector2 lr = {x + size/2.0f, y - size/2.0f};
+            Vector2 ur = {x + size/2.0f, y + size/2.0f};
             DrawLineEx(ll, ur, BAD_DATA_LINE_THICKNESS, RED);
             DrawLineEx(lr, ul, BAD_DATA_LINE_THICKNESS, RED);
 
-            DrawRectangleLinesEx((Rectangle) {ll.x, ll.y, size, size}, BAD_DATA_LINE_THICKNESS, RED);
+            DrawRectangleLinesEx({ll.x, ll.y, size, size}, BAD_DATA_LINE_THICKNESS, RED);
         } else {
             draw_outline();
             draw_text_value();
@@ -96,8 +96,8 @@ void RoundGauge::draw_value() {
     float sector_size = (size - OUTLINE_STROKE_WIDTH * 3.0f) / 2.0f;
     // 120 segments per 360 degrees is enough
     int segments = (int)(angle.start - angle.end)/3.0f;
-    DrawRing((Vector2){x, y}, sector_size/2.0f, sector_size, angle.start, angle.end, segments, color);
-    //DrawCircleSector((Vector2){x, y}, sector_size, angle.start, angle.end, 0, color);
+    DrawRing({x, y}, sector_size/2.0f, sector_size, angle.start, angle.end, segments, color);
+    //DrawCircleSector({x, y}, sector_size, angle.start, angle.end, 0, color);
 }
 
 void RoundGauge::draw_text_value() {
@@ -106,15 +106,15 @@ void RoundGauge::draw_text_value() {
     sprintf(value_buf, "%*.0f", num_digits, value);
 
     float point_size = get_max_text_size(value_buf, font, size/2.1f);
-    DrawTextExAlign(font, value_buf, (Vector2) {x + size/2, y}, point_size, 0, WHITE, RIGHT, TOP);
+    DrawTextExAlign(font, value_buf, {x + size/2, y}, point_size, 0, WHITE, RIGHT, TOP);
 }
 
 void RoundGauge::draw_outline() {
-    for (int c = 0; c < this->ranges.size(); c++) {
+    for (unsigned long c = 0; c < this->ranges.size(); c++) {
         Color color = get_color(ranges[c].state);
         Angle angle = get_angle(ranges[c].min, ranges[c].max);
         int segments = (int)(angle.start - angle.end)/3.0f;
-        DrawRing((Vector2){x, y}, size/2.0f - OUTLINE_STROKE_WIDTH, size/2.0f, angle.start, angle.end, segments, color);
+        DrawRing({x, y}, size/2.0f - OUTLINE_STROKE_WIDTH, size/2.0f, angle.start, angle.end, segments, color);
     };
 }
 

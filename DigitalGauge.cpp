@@ -21,7 +21,7 @@ DigitalGauge::DigitalGauge(std::string name, std::string parameter_name, int x, 
     float max = -FLT_MAX;
     std::vector<Range> ranges;
     if (states.size() > 0) {
-        for (int c = 0; c < states.size(); c++) {
+        for (unsigned long c = 0; c < states.size(); c++) {
             Range next_range;
             next_range.min = bounds[c];
             next_range.max = bounds[c+1];
@@ -62,21 +62,21 @@ void DigitalGauge::draw() {
     float text_size = get_max_text_size(value_buf, font, size);
 
     if (std::time(NULL) - last_updated_timestamp > DATA_TIMEOUT) {
-        Vector2 ll = (Vector2) {x - size/2.0f, y - text_size/2.0f};
-        Vector2 ul = (Vector2) {x - size/2.0f, y + text_size/2.0f};
-        Vector2 lr = (Vector2) {x + size/2.0f, y - text_size/2.0f};
-        Vector2 ur = (Vector2) {x + size/2.0f, y + text_size/2.0f};
+        Vector2 ll = {x - size/2.0f, y - text_size/2.0f};
+        Vector2 ul = {x - size/2.0f, y + text_size/2.0f};
+        Vector2 lr = {x + size/2.0f, y - text_size/2.0f};
+        Vector2 ur = {x + size/2.0f, y + text_size/2.0f};
 
         DrawLineEx(ll, ur, BAD_DATA_LINE_THICKNESS, RED);
         DrawLineEx(lr, ul, BAD_DATA_LINE_THICKNESS, RED);
-        DrawRectangleLinesEx((Rectangle) {ll.x, ll.y, size, text_size}, BAD_DATA_LINE_THICKNESS, RED);
+        DrawRectangleLinesEx({ll.x, ll.y, size, text_size}, BAD_DATA_LINE_THICKNESS, RED);
     } else {
         Color color = WHITE;
         if (get_state() != OK) {
-            Color color = get_color(get_state());
+            color = get_color(get_state());
         }
 
-        DrawTextExAlign(font, value_buf, (Vector2){x, y}, text_size, 0, color, CENTER, MIDDLE);
+        DrawTextExAlign(font, value_buf, {x, y}, text_size, 0, color, CENTER, MIDDLE);
     }
 }
 
