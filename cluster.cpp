@@ -1,6 +1,7 @@
 #include <ctime>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <string>
 #include <sstream>
 
@@ -273,42 +274,38 @@ int main() {
         DrawFPS(200, 20);
 #endif
 
-        // TODO gauge->get_state is not a trivial {return state;} function, so calling it multiple times is inefficient.
-        //      storing a Map<Gauge, State> would take a bit more overhead but be more efficient
-        //      enqueuing the text to print and using a separate loop for that would also be more efficient.
         // set background if any state is CRIT
         bool black_text = false;
+        std::map<State, std::vector<Gauge*>> state_to_gauge_map;
         for (Gauge *gauge : gauges) {
-            if (gauge->get_state() == CRIT) {
-                if (warn_flash_on) {
-                    ClearBackground(MAROON);
-                    black_text = true;
-                    break;
-                }
-            }
+            state_to_gauge_map[gauge->get_state()].push_back(gauge);
+        }
+
+        if (state_to_gauge_map[CRIT].size() > 0 && warn_flash_on) {
+            ClearBackground(MAROON);
+            black_text = true;
         }
 
         // TODO parameterize this in the conf file
         Vector2 crit_label_pos = {532, 420};
-        for (Gauge *gauge : gauges) {
-            State state = gauge->get_state();
-            if (state == CRIT || state == STALE) {
-                if (black_text) {
-                    text_color = BLACK;
-                }else {
-                    text_color = gauge->get_color(CRIT);
-                }
-                //TODO set font size more intelligently
-                DrawTextEx(font, gauge->get_name().c_str(), crit_label_pos, 36.0f, 0, text_color);
-                crit_label_pos.y += 40.0f;
+        // TODO there's definitely a better way to do this
+        std::vector<Gauge*> crit_or_stale_gauges;
+        crit_or_stale_gauges.insert(crit_or_stale_gauges.end(), state_to_gauge_map[CRIT].begin(), state_to_gauge_map[CRIT].end());
+        crit_or_stale_gauges.insert(crit_or_stale_gauges.end(), state_to_gauge_map[STALE].begin(), state_to_gauge_map[STALE].end());
+        for (Gauge *gauge : crit_or_stale_gauges) {
+            if (black_text) {
+                text_color = BLACK;
+            } else {
+                text_color = gauge->get_color(CRIT);
             }
+            //TODO set font size more intelligently
+            DrawTextEx(font, gauge->get_name().c_str(), crit_label_pos, 36.0f, 0, text_color);
+            crit_label_pos.y += 40.0f;
         }
         // Print anything in WARN state after anything in CRIT state
-        for (Gauge *gauge : gauges) {
-            if (gauge->get_state() == WARN) {
-                DrawTextEx(font, gauge->get_name().c_str(), crit_label_pos, 36.0f, 0, gauge->get_color(WARN));
-                crit_label_pos.y += 40.0f;
-            }
+        for (Gauge *gauge : state_to_gauge_map[WARN]) {
+            DrawTextEx(font, gauge->get_name().c_str(), crit_label_pos, 36.0f, 0, gauge->get_color(WARN));
+            crit_label_pos.y += 40.0f;
         }
 
         print_debug("Drawing labels...\n");
