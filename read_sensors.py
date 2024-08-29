@@ -149,6 +149,7 @@ if config["TELEMETRY_UPLOAD"]["upload_enabled"] == "1":
             fieldnames=uploader_fieldnames,
             address=config["TELEMETRY_UPLOAD"]["address"],
             port=config["TELEMETRY_UPLOAD"]["port"],
+            logger=logger,
     )
 
 # the only other socket should be read-only, but since there are multiple it feels wrong to assume which one we'll be using
@@ -367,7 +368,7 @@ with open(output_filename, 'w', newline='') as csvfile:
                 }
                 csv_writer.writerow(fields)
                 if config["TELEMETRY_UPLOAD"]["upload_enabled"] == "1":
-                    telemetry_uploader.send_update(fields)
+                    telemetry_uploader.enqueue_update(fields)
                 next_log_time += LOG_INTERVAL
                 last_log_time = current_time
                 # if more than one LOG_INTERVAL has elapsed, repeat the observation as MoTeC is expecting a constant log rate.
@@ -377,7 +378,7 @@ with open(output_filename, 'w', newline='') as csvfile:
                     fields["repeated"] = 1
                     csv_writer.writerow(fields)
                     if config["TELEMETRY_UPLOAD"]["upload_enabled"] == "1":
-                        telemetry_uploader.send_update(fields)
+                        telemetry_uploader.enqueue_update(fields)
                     next_log_time += LOG_INTERVAL
 
             time.sleep(0.01)
