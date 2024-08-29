@@ -205,7 +205,7 @@ else:
 
 # Interval between log entries, in seconds
 # TODO using this sort of logging method will not indicate stale data. Use something better.
-LOG_INTERVAL = 0.1
+LOG_INTERVAL = 0.04
 
 # I'm OK with missing a second of data to not log a bunch of repeats to fill the gap between the floor of the timestamp and the actual start time
 next_log_time = int(time.monotonic()) + 1
