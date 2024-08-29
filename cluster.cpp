@@ -18,8 +18,8 @@
 #include "inipp.h"
 // TODO this looks like it might be better https://github.com/SSARCandy/ini-cpp
 
-//#define DEBUG
-//#define DEBUG_FPS
+#define DEBUG
+#define DEBUG_FPS
 
 int main() {
 
@@ -62,12 +62,11 @@ int main() {
 #endif
 
     inipp::Ini<char> ini;
-    std::ifstream is("rpi-cluster.conf");
+    std::ifstream is("/home/pi/rpi-cluster/rpi-cluster.conf");
     ini.parse(is);
 
     /////////// DEFINE GAUGES /////////////////////////////////////////////
     std::vector<Gauge*> gauges;
-    std::map<std::string, float> parameter_values;
 
     std::string gauge_section;
     int gauge_index = 0;
@@ -77,6 +76,7 @@ int main() {
         if (ini.sections.find(gauge_section) == ini.sections.end()) {
             break;
         }
+        std::cout << "Found " << gauge_section << std::endl;
         // these values are common to all gauges
         std::string type;
         std::string display_name;
@@ -89,8 +89,6 @@ int main() {
         inipp::get_value(ini.sections[gauge_section], "type", type);
         inipp::get_value(ini.sections[gauge_section], "display_name", display_name);
         inipp::get_value(ini.sections[gauge_section], "parameter_name", parameter_name);
-        // initialize the parameter
-        parameter_values[parameter_name] = 0.0f;
         inipp::get_value(ini.sections[gauge_section], "center_x", center_x);
         inipp::get_value(ini.sections[gauge_section], "center_y", center_y);
         inipp::get_value(ini.sections[gauge_section], "thresholds", thresholds_str);
@@ -123,6 +121,7 @@ int main() {
             }
         }
         if (type == "round") {
+            std::cout << "Round gauge\n";
             float size = 0.0f;
             int display_digits = -1;
             int decimal_digits = 0;
@@ -131,8 +130,9 @@ int main() {
             inipp::get_value(ini.sections[gauge_section], "display_digits", display_digits);
             inipp::get_value(ini.sections[gauge_section], "decimal", decimal_digits);
 
-            RoundGauge gauge(
+            RoundGauge *gauge = new RoundGauge(
                 display_name,
+                parameter_name,
                 center_x, center_y,
                 size,
                 display_digits,
@@ -140,9 +140,11 @@ int main() {
                 states,
                 font
             );
-            gauges.push_back(&gauge);
+            std::cout << "Pushing back\n";
+            gauges.push_back(gauge);
 
         } else if (type == "rect") {
+            std::cout << "Rect gauge\n";
             float size_x = 0.0f;
             float size_y = 0.0f;
             int display_digits;
@@ -153,8 +155,9 @@ int main() {
             inipp::get_value(ini.sections[gauge_section], "display_digits", display_digits);
             inipp::get_value(ini.sections[gauge_section], "orientation", orientation_str);
 
-            RectGauge gauge(
+            RectGauge *gauge = new RectGauge(
                 display_name, 
+                parameter_name,
                 center_x,
                 center_y,
                 (Vector2) {size_x, size_y},
@@ -163,8 +166,11 @@ int main() {
                 thresholds,
                 states
             );
-            gauges.push_back(&gauge);
+            std::cout << "Pushing back\n";
+            gauges.push_back(gauge);
+
         } else if (type == "digital") {
+            std::cout << "Digital gauge\n";
             float size = 0.0f;
             int display_digits = -1;
             int decimal_digits = -1;
@@ -173,8 +179,9 @@ int main() {
             inipp::get_value(ini.sections[gauge_section], "digits", display_digits);
             inipp::get_value(ini.sections[gauge_section], "decimal", decimal_digits);
 
-            DigitalGauge gauge(
+            DigitalGauge *gauge = new DigitalGauge(
                 display_name,
+                parameter_name,
                 center_x,
                 center_y,
                 size,
@@ -184,7 +191,9 @@ int main() {
                 states,
                 font
             );
-            gauges.push_back(&gauge);
+            std::cout << "Pushing back\n";
+            gauges.push_back(gauge);
+
         }
 
         gauge_index++;
@@ -197,7 +206,7 @@ int main() {
     int label_index = 0;
 
     while (true) {
-        label_section = std::string("TEXT_") + std::to_string(gauge_index);
+        label_section = std::string("TEXT_") + std::to_string(label_index);
         if (ini.sections.find(label_section) == ini.sections.end()) {
             break;
         }
@@ -211,21 +220,12 @@ int main() {
         inipp::get_value(ini.sections[label_section], "center_y", center_y);
         inipp::get_value(ini.sections[label_section], "size", size);
 
-        Label label(text, center_x, center_y, size, font);
+        Label *label = new Label(text, center_x, center_y, size, font);
 
-        labels.push_back(&label);
+        labels.push_back(label);
 
         label_index++;
     }
-
-
-
-
-
-#ifdef DEBUG
-    std::cout << "Pushing gauges to vector...\n";
-#endif
-
 
     bool warn_flash_on = true;
 
@@ -238,6 +238,8 @@ int main() {
 
         zmqpp::message message;
 
+        // TODO initializing this here prevents recognition of unrecognized values based on their absence in the map; either store a list of expected values when the gauges are initialized from the conf file or initialize the map and use a different algorithm to draw them so stale data can be recognized.
+        std::map<std::string, float> parameter_values;
         int message_count = 0;
         while (socket.receive(message, true)) {
             std::string text;
@@ -269,11 +271,12 @@ int main() {
                 int minutes = (int) param_value % 60;
                 param_value = (float) hours + minutes/100.0f;
             }
-            if (parameter_values.find(param_name) != parameter_values.end()) {
+            // see above comment about the initialization of parameter_values
+            // if (parameter_values.find(param_name) != parameter_values.end()) {
                 parameter_values[param_name] = param_value;
-            } else {
-                std::cout << "Unknown parameter: " << param_name << '\n';
-            }
+            //} else {
+            //    std::cout << "Unknown parameter: " << param_name << '\n';
+            //}
 
         }
 #ifdef DEBUG
@@ -315,7 +318,7 @@ int main() {
                     text_color = gauge->get_color(CRIT);
                 }
                 //TODO set font size more intelligently
-                DrawTextEx(font, gauge->get_name(), crit_label_pos, 36.0f, 0, text_color);
+                DrawTextEx(font, gauge->get_name().c_str(), crit_label_pos, 36.0f, 0, text_color);
                 crit_label_pos.y += 40.0f;
             }
 
@@ -324,15 +327,18 @@ int main() {
 #ifdef DEBUG
         std::cout << "Drawing labels...\n";
 #endif
+        for (Label *label : labels) {
+            label->draw();
+        }
 
 #ifdef DEBUG
         std::cout << "Drawing gauges...\n";
 #endif
         for (Gauge *gauge : gauges) {
+            if (parameter_values.find(gauge->get_parameter_name()) != parameter_values.end()) {
+                gauge->set_value(parameter_values[gauge->get_parameter_name()]);
+            }
             gauge->draw();
-        }
-        for (Label *label : labels) {
-            label->draw();
         }
 
 #ifdef DEBUG

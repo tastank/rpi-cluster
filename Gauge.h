@@ -29,15 +29,17 @@ protected:
     std::vector<Range> ranges;
     float min, max;
     std::string name;
+    std::string parameter_name;
     float value;
+    float x, y;
 public:
     static Color get_color(State);
-    float x, y;
     float get_value();
     void set_value(float);
     float get_min();
     float get_max();
-    const char *get_name();
+    std::string get_name();
+    std::string get_parameter_name();
     State get_state();
     virtual void draw() = 0;
 };

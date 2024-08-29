@@ -22,7 +22,7 @@ class RectGauge : public Gauge {
 
 public:
     //RectGauge(const char *name, int x, int y, Vector2 size, Orientation orientation, int numdigits, int numranges, std::initializer_list<float> bounds, std::initializer_list<State> states, Font font);
-    RectGauge(std::string name, int x, int y, Vector2 size, Orientation orientation, int numdigits, std::vector<float> bounds, std::vector<State> states);
+    RectGauge(std::string name, std::string parameter_name, int x, int y, Vector2 size, Orientation orientation, int numdigits, std::vector<float> bounds, std::vector<State> states);
     void draw();
 };
 

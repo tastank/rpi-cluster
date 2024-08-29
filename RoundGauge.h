@@ -21,7 +21,7 @@ class RoundGauge : public Gauge {
 
 public:
     float size; // TODO Should probably be private
-    RoundGauge(std::string name, int x, int y, int size, int numdigits, std::vector<float> bounds, std::vector<State> states, Font font);
+    RoundGauge(std::string name, std::string parameter_name, int x, int y, int size, int numdigits, std::vector<float> bounds, std::vector<State> states, Font font);
     void draw();
 };
 

@@ -12,8 +12,8 @@ class DigitalGauge : public Gauge {
     Font font;
 
 public:
-    DigitalGauge(std::string name, int x, int y, int size, int numdigits, std::vector<float> bounds, std::vector<State> states, Font font);
-    DigitalGauge(std::string name, int x, int y, int size, int numdigits, int numdecimal, std::vector<float> bounds, std::vector<State> states, Font font);
+    DigitalGauge(std::string name, std::string parameter_name, int x, int y, int size, int numdigits, std::vector<float> bounds, std::vector<State> states, Font font);
+    DigitalGauge(std::string name, std::string parameter_name, int x, int y, int size, int numdigits, int numdecimal, std::vector<float> bounds, std::vector<State> states, Font font);
     void draw();
 };
 

@@ -15,26 +15,35 @@
 
 // TODO support non-linear round_gauges
 
-RoundGauge::RoundGauge(std::string name, int x, int y, int size, int numdigits, std::vector<float> bounds, std::vector<State> states, Font font) {
+RoundGauge::RoundGauge(std::string name, std::string parameter_name, int x, int y, int size, int numdigits, std::vector<float> bounds, std::vector<State> states, Font font) {
     this->name = name;
+    this->parameter_name = parameter_name;
     std::vector<float> bounds_vector{bounds};
     std::vector<State> states_vector{states};
     float min = FLT_MAX;
     float max = FLT_MIN;
     std::vector<Range> ranges;
-    for (int c = 0; c < states.size(); c++) {
-        Range next_range;
-        next_range.min = bounds[c];
-        next_range.max = bounds[c+1];
-        next_range.state = states_vector[c];
-        // They should be sorted, but what if they're not? will anything else fail?
-        if (bounds[c] > max) max = bounds[c];
-        if (bounds[c] < min) min = bounds[c];
-        ranges.push_back(next_range);
+    if (states.size() > 0) {
+        for (int c = 0; c < states.size(); c++) {
+            Range next_range;
+            next_range.min = bounds[c];
+            next_range.max = bounds[c+1];
+            next_range.state = states_vector[c];
+            // They should be sorted, but what if they're not? will anything else fail?
+            if (bounds[c] > max) max = bounds[c];
+            if (bounds[c] < min) min = bounds[c];
+            ranges.push_back(next_range);
+        }
+        // The above will have missed the last index
+        if (bounds[states.size()] > max) max = bounds[states.size()];
+        if (bounds[states.size()] < min) min = bounds[states.size()];
+    } else {
+        Range range;
+        range.min = FLT_MIN;
+        range.max = FLT_MAX;
+        range.state = OK;
+        ranges.push_back(range);
     }
-    // The above will have missed the last index
-    if (bounds[states.size()] > max) max = bounds[states.size()];
-    if (bounds[states.size()] < min) min = bounds[states.size()];
 
     this->x = x;
     this->y = y;

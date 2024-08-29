@@ -22,25 +22,34 @@ Orientation str_to_orientation(std::string str) {
 }
 
 //RectGauge::RectGauge(const char *name, int x, int y, Vector2 size, Orientation orientation, int numdigits, int states.size(), std::initializer_list<float> bounds, std::initializer_list<State> states, Font font) {
-RectGauge::RectGauge(std::string name, int x, int y, Vector2 size, Orientation orientation, int numdigits, std::vector<float> bounds, std::vector<State> states) {
+RectGauge::RectGauge(std::string name, std::string parameter_name, int x, int y, Vector2 size, Orientation orientation, int numdigits, std::vector<float> bounds, std::vector<State> states) {
     // TODO move some of this repeated code to Gauge
     this->name = name;
+    this->parameter_name = parameter_name;
     float min = FLT_MAX;
     float max = FLT_MIN;
     std::vector<Range> ranges;
-    for (int c = 0; c < states.size(); c++) {
-        Range next_range;
-        next_range.min = bounds[c];
-        next_range.max = bounds[c+1];
-        next_range.state = states[c];
-        // They should be sorted, but what if they're not? will anything else fail?
-        if (bounds[c] > max) max = bounds[c];
-        if (bounds[c] < min) min = bounds[c];
-        ranges.push_back(next_range);
+    if (states.size() > 0) {
+        for (int c = 0; c < states.size(); c++) {
+            Range next_range;
+            next_range.min = bounds[c];
+            next_range.max = bounds[c+1];
+            next_range.state = states[c];
+            // They should be sorted, but what if they're not? will anything else fail?
+            if (bounds[c] > max) max = bounds[c];
+            if (bounds[c] < min) min = bounds[c];
+            ranges.push_back(next_range);
+        }
+        // The above will have missed the last index
+        if (bounds[states.size()] > max) max = bounds[states.size()];
+        if (bounds[states.size()] < min) min = bounds[states.size()];
+    } else {
+        Range range;
+        range.min = FLT_MIN;
+        range.max = FLT_MAX;
+        range.state = OK;
+        ranges.push_back(range);
     }
-    // The above will have missed the last index
-    if (bounds[states.size()] > max) max = bounds[states.size()];
-    if (bounds[states.size()] < min) min = bounds[states.size()];
 
     this->x = x - size.x / 2;
     this->y = y - size.y / 2;

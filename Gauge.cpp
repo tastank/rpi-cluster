@@ -34,8 +34,12 @@ void Gauge::set_value(float value) {
     this->value = value;
 }
 
-const char *Gauge::get_name() {
-    return name.c_str();
+std::string Gauge::get_name() {
+    return name;
+}
+
+std::string Gauge::get_parameter_name() {
+    return parameter_name;
 }
 
 Color Gauge::get_color(State state) {

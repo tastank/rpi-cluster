@@ -18,3 +18,4 @@ Label::Label(std::string text, float center_x, float center_y, float size, Font 
 void Label::draw() {
     DrawTextExAlign(font, text, {center_x, center_y}, size, 0, WHITE, CENTER, MIDDLE);
 }
+
