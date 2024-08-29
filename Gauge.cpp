@@ -61,7 +61,7 @@ State Gauge::get_state() {
     }
     State current_state;
     bool state_found = false;
-    for (int c = 0; c < num_ranges; c++) {
+    for (int c = 0; c < this->ranges.size(); c++) {
         if (get_value() >= ranges[c].min && get_value() < ranges[c].max) {
             current_state = ranges[c].state;
             state_found = true;

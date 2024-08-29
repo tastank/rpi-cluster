@@ -47,7 +47,6 @@ DigitalGauge::DigitalGauge(std::string name, std::string parameter_name, int x, 
     this->size = size;
     this->num_digits = numdigits;
     this->num_decimal = numdecimal;
-    this->num_ranges = states.size();
     this->ranges = ranges;
     this->min = min;
     this->max = max;

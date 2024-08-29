@@ -49,7 +49,6 @@ RoundGauge::RoundGauge(std::string name, std::string parameter_name, int x, int 
     this->y = y;
     this->size = size;
     this->num_digits = numdigits;
-    this->num_ranges = states.size();
     this->ranges = ranges;
     this->min = min;
     this->max = max;
@@ -111,7 +110,7 @@ void RoundGauge::draw_text_value() {
 }
 
 void RoundGauge::draw_outline() {
-    for (int c = 0; c < num_ranges; c++) {
+    for (int c = 0; c < this->ranges.size(); c++) {
         Color color = get_color(ranges[c].state);
         Angle angle = get_angle(ranges[c].min, ranges[c].max);
         int segments = (int)(angle.start - angle.end)/3.0f;

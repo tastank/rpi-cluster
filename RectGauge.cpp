@@ -56,7 +56,6 @@ RectGauge::RectGauge(std::string name, std::string parameter_name, int x, int y,
     this->size = size;
     this->orientation = orientation;
     this->num_digits = numdigits;
-    this->num_ranges = states.size();
     this->ranges = ranges;
     this->min = min;
     this->max = max;
@@ -130,7 +129,7 @@ void RectGauge::draw_outline() {
     float size_available = size.y - OUTLINE_STROKE_WIDTH;
     float x_left = x + OUTLINE_STROKE_WIDTH/2.0f;
     float x_right = x + size.x - OUTLINE_STROKE_WIDTH/2.0f;
-    for (int c = 0; c < num_ranges; c++) {
+    for (int c = 0; c < ranges.size(); c++) {
         Color color = get_color(ranges[c].state);
         float min_normalized = (ranges[c].min - min) / (max - min);
         float max_normalized = (ranges[c].max - min) / (max - min);
