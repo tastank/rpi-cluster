@@ -16,7 +16,6 @@ import zmq
 import racebox
 import telemetry_upload
 
-start_time = time.time()
 
 CONFIG_FILE = "/home/pi/rpi-cluster/web.conf"
 LOG_DIR = "/home/pi/log/read_sensors/"
@@ -95,7 +94,7 @@ fuel_qty_filter_current_sample = 0
 # this is the square of G force, to avoid the sqrt
 FUEL_SENSOR_G_FORCE_SQ_THRESHOLD = 0.02
 
-last_log_time = int(time.time())
+last_log_time = int(time.monotonic())
 # I'm OK with missing a second of data to not log a bunch of repeats to fill the gap between the floor of the timestamp and the actual start time
 next_log_time = last_log_time + 1
 
@@ -208,13 +207,13 @@ else:
 LOG_INTERVAL = 0.1
 
 # I'm OK with missing a second of data to not log a bunch of repeats to fill the gap between the floor of the timestamp and the actual start time
-next_log_time = int(time.time()) + 1
+next_log_time = int(time.monotonic()) + 1
 
 output_filename = os.path.join(TELEMETRY_DIR, "{:04}.csv".format(log_number))
 logger.info("Starting CSV output to {}".format(output_filename))
 
-laptime_start = time.time()
-last_racebox_update = time.time()
+laptime_start = time.monotonic()
+last_racebox_update = time.monotonic()
 previous_latitude = 0
 
 with open(output_filename, 'w', newline='') as csvfile:
@@ -222,9 +221,9 @@ with open(output_filename, 'w', newline='') as csvfile:
     csv_writer.writeheader()
 
     while True:
-        loop_start_time = time.time()
+        loop_start_time = time.monotonic()
         try:
-            send_zmqpp("TIME:{}".format(int((loop_start_time - start_time)/60)))
+            send_zmqpp("TIME:{}".format(int(time.clock_gettime(time.CLOCK_BOOTTIME)/60)))
             while True:
                 try:
                     racebox_data = racebox_socket.recv_json(flags=zmq.NOBLOCK)
@@ -242,11 +241,11 @@ with open(output_filename, 'w', newline='') as csvfile:
                     gforce_z = racebox_data["gforce_z"]
                     volts = racebox_data["input_voltage"]
                     send_zmqpp("VOLTS:{}".format(volts))
-                    current_time = time.time()
+                    current_time = time.monotonic()
                     cumulative_lap_distance += mph * (current_time - last_racebox_update) / 3600.0
-                    last_racebox_update = time.time()
+                    last_racebox_update = time.monotonic()
                     # TODO more hardcoding to remove; should maybe just save this for the analysis script
-                    if longitude < ROAD_AMERICA_FINISH_LINE_LEFT_LONGITUDE and longitude > ROAD_AMERICA_FINISH_LINE_RIGHT_LONGITUDE and latitude < ROAD_AMERICA_FINISH_LINE_LATITUDE and previous_latitude > ROAD_AMERICA_FINISH_LINE_LATITUDE and time.time() - laptime_start > 30:
+                    if longitude < ROAD_AMERICA_FINISH_LINE_LEFT_LONGITUDE and longitude > ROAD_AMERICA_FINISH_LINE_RIGHT_LONGITUDE and latitude < ROAD_AMERICA_FINISH_LINE_LATITUDE and previous_latitude > ROAD_AMERICA_FINISH_LINE_LATITUDE and time.monotonic() - laptime_start > 30:
                         laptime_end = current_time
                         beacon = 1
                         laptime = laptime_end - laptime_start
@@ -330,7 +329,7 @@ with open(output_filename, 'w', newline='') as csvfile:
             except AttributeError:
                 logger.error(traceback.format_exc())
             # use a consistent time for the following checks
-            current_time = time.time()
+            current_time = time.monotonic()
             if current_time >= next_log_time:
                 fields = {
                     "system_time": round(current_time, 3),
