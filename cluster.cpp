@@ -73,25 +73,44 @@ int main() {
         {CRIT, WARN, OK, WARN},
         font
     );
-    RoundGauge oil_temp_gauge(
+    RectGauge oil_temp_gauge(
         "OIL TEMP",
-        // keep everything nice and aligned
-        oil_press_gauge.x, SCREEN_HEIGHT-oil_press_gauge.y,
-        150.0f,
+        SCREEN_WIDTH-140+35.0f, 450.0f,
+        (Vector2) {40.0f, 150.0f},
+        VERTICAL,
         3,
         4,
         {0.0f, 200.0f, 240.0f, 260.0f, 330.0f},
-        {WARN, OK, WARN, CRIT},
+        {WARN, OK, WARN, CRIT}
+    );
+    DigitalGauge oil_temp_display(
+        "FUEL",
+        oil_temp_gauge.x + 20, 540,
+        50.0f,
+        3, 0,
+        1,
+        {0.0f, 250.0f},
+        {OK},
         font
     );
-    RoundGauge water_temp_gauge(
+    RectGauge water_temp_gauge(
         "WATER TEMP",
-        SCREEN_WIDTH-oil_press_gauge.x, oil_press_gauge.y,
-        150.0f,
+        SCREEN_WIDTH-140-35.0f, 450.0f,
+        (Vector2) {40.0f, 150.0f},
+        VERTICAL,
         3,
         4,
         {0.0f, 140.0f, 200.0f, 220.0f, 250.0f},
-        {WARN, OK, WARN, CRIT},
+        {WARN, OK, WARN, CRIT}
+    );
+    DigitalGauge water_temp_display(
+        "FUEL",
+        water_temp_gauge.x + 20, oil_temp_display.y,
+        50.0f,
+        3, 0,
+        1,
+        {0.0f, 250.0f},
+        {OK},
         font
     );
     RoundGauge water_press_gauge(
@@ -137,7 +156,7 @@ int main() {
     );
     DigitalGauge voltmeter(
         "VOLTS",
-        1024-250, 70,
+        1024-150, 100,
         100.0f,
         4, 1,
         4,
@@ -145,6 +164,17 @@ int main() {
         {CRIT, WARN, OK, CRIT},
         font
     );
+    DigitalGauge stint_timer(
+        "STINT",
+        voltmeter.x, voltmeter.y + 100,
+        100.0f,
+        4, 2,
+        1,
+        {0.0f, 3.0f},
+        {OK},
+        font
+    );
+
 #ifdef DEBUG
     std::cout << "Pushing gauges to vector...\n";
 #endif
@@ -159,6 +189,7 @@ int main() {
     gauges.push_back(&speedometer);
     gauges.push_back(&fuel_qty_gauge);
     gauges.push_back(&voltmeter);
+    gauges.push_back(&stint_timer);
 
     float oil_press;
     float oil_temp;
@@ -168,6 +199,7 @@ int main() {
     float mph;
     float fuel_qty;
     float volts;
+    float stint_time;
 
     bool warn_flash_on = true;
 
@@ -207,12 +239,14 @@ int main() {
             } else if (param_name == "OT") {
                 oil_temp = param_value;
                 oil_temp_gauge.set_value(oil_temp);
+                oil_temp_display.set_value(oil_temp);
             } else if (param_name == "WP") {
                 water_press = param_value;
                 water_press_gauge.set_value(water_press);
             } else if (param_name == "WT") {
                 water_temp = param_value;
                 water_temp_gauge.set_value(water_temp);
+                water_temp_display.set_value(water_temp);
             } else if (param_name == "RPM") {
                 rpm = param_value;
                 tachometer.set_value(rpm);
@@ -226,6 +260,14 @@ int main() {
             } else if (param_name == "VOLTS") {
                 volts = param_value;
                 voltmeter.set_value(volts);
+            } else if (param_name == "TIME") {
+                // TODO treat this like a string ("H:MM"), not a float.
+                // this is a hack to show H.MM
+                stint_time = param_value;
+                int hours = (int) (stint_time / 60.0f);
+                int minutes = (int) stint_time % 60;
+                float hours_minutes = (float) hours + minutes/100.0f;
+                stint_timer.set_value(hours_minutes);
             } else if (param_name == "FLASH") {
                 warn_flash_on = (param_value > 0.9f);
             } else {
@@ -285,16 +327,17 @@ int main() {
 #define MAJOR_LABEL_SIZE 36.0f
 #define MINOR_LABEL_SIZE 18.0f
 
-        DrawTextExAlign(font, "OIL", {oil_press_gauge.x, SCREEN_HEIGHT/2}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "OIL PRESS", {oil_press_gauge.x, SCREEN_HEIGHT/2}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
         DrawPixel(oil_press_gauge.x, SCREEN_HEIGHT/2, MAGENTA);
-        DrawTextExAlign(font, "WATER", {water_temp_gauge.x, SCREEN_HEIGHT/2}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
-        DrawTextExAlign(font, "PRESS", {oil_press_gauge.x, oil_press_gauge.y-oil_press_gauge.size/2-30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
-        DrawTextExAlign(font, "TEMP", {oil_temp_gauge.x, oil_temp_gauge.y+oil_temp_gauge.size/2+30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
-        DrawTextExAlign(font, "PRESS", {water_press_gauge.x, water_press_gauge.y+water_press_gauge.size/2+30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
-        DrawTextExAlign(font, "TEMP", {water_temp_gauge.x, water_temp_gauge.y-water_temp_gauge.size/2-30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        //DrawTextExAlign(font, "WATER", {water_temp_gauge.x, SCREEN_HEIGHT/2}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        //DrawTextExAlign(font, "PRESS", {oil_press_gauge.x, oil_press_gauge.y-oil_press_gauge.size/2-30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "OT", {oil_temp_gauge.x + 20.0f, oil_temp_gauge.y-30.0f}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        //DrawTextExAlign(font, "PRESS", {water_press_gauge.x, water_press_gauge.y+water_press_gauge.size/2+30}, MINOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "WT", {water_temp_gauge.x + 20.0f, water_temp_gauge.y-30.0f}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
         // I should probably change this behavior, but to make drawing easier RectGauge changes the x and y values to one of the corners instead of the center. DigitalGauge does not, so use the digital fuel gauge for alignment.
         DrawTextExAlign(font, "FUEL", {fuel_qty_display.x, 70.0f}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
         DrawTextExAlign(font, "VOLTS", {voltmeter.x, voltmeter.y + 30.0f}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
+        DrawTextExAlign(font, "STINT", {stint_timer.x, stint_timer.y + 30.0f}, MAJOR_LABEL_SIZE, 0, WHITE, CENTER, MIDDLE);
 
 
 #ifdef DEBUG
@@ -303,12 +346,15 @@ int main() {
         tachometer.draw();
         oil_press_gauge.draw();
         oil_temp_gauge.draw();
-        water_press_gauge.draw();
+        oil_temp_display.draw();
+        //water_press_gauge.draw();
         water_temp_gauge.draw();
+        water_temp_display.draw();
         speedometer.draw();
         fuel_qty_gauge.draw();
         fuel_qty_display.draw();
         voltmeter.draw();
+        stint_timer.draw();
 
 #ifdef DEBUG
         std::cout << "Finished drawing.\n";

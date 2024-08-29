@@ -16,7 +16,9 @@ import zmq
 import racebox
 import telemetry_upload
 
-CONFIG_FILE = "rpi-cluster.conf"
+start_time = time.time()
+
+CONFIG_FILE = "/home/pi/rpi-cluster/rpi-cluster.conf"
 LOG_DIR = "/home/pi/log/read_sensors/"
 TELEMETRY_DIR = "/home/pi/log/telemetry/"
 os.umask(0)
@@ -222,6 +224,7 @@ with open(output_filename, 'w', newline='') as csvfile:
     while True:
         loop_start_time = time.time()
         try:
+            send_zmqpp("TIME:{}".format(int((loop_start_time - start_time)/60)))
             while True:
                 try:
                     racebox_data = racebox_socket.recv_json(flags=zmq.NOBLOCK)
