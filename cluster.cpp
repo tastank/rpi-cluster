@@ -18,8 +18,8 @@
 #include "inipp.h"
 // TODO this looks like it might be better https://github.com/SSARCandy/ini-cpp
 
-#define DEBUG
-#define DEBUG_FPS
+//#define DEBUG
+//#define DEBUG_FPS
 
 int main() {
 
@@ -76,7 +76,6 @@ int main() {
         if (ini.sections.find(gauge_section) == ini.sections.end()) {
             break;
         }
-        std::cout << "Found " << gauge_section << std::endl;
         // these values are common to all gauges
         std::string type;
         std::string display_name;
@@ -121,7 +120,6 @@ int main() {
             }
         }
         if (type == "round") {
-            std::cout << "Round gauge\n";
             float size = 0.0f;
             int display_digits = -1;
             int decimal_digits = 0;
@@ -140,11 +138,9 @@ int main() {
                 states,
                 font
             );
-            std::cout << "Pushing back\n";
             gauges.push_back(gauge);
 
         } else if (type == "rect") {
-            std::cout << "Rect gauge\n";
             float size_x = 0.0f;
             float size_y = 0.0f;
             int display_digits;
@@ -166,14 +162,12 @@ int main() {
                 thresholds,
                 states
             );
-            std::cout << "Pushing back\n";
             gauges.push_back(gauge);
 
         } else if (type == "digital") {
-            std::cout << "Digital gauge\n";
             float size = 0.0f;
-            int display_digits = -1;
-            int decimal_digits = -1;
+            int display_digits = 0;
+            int decimal_digits = 0;
 
             inipp::get_value(ini.sections[gauge_section], "size", size);
             inipp::get_value(ini.sections[gauge_section], "digits", display_digits);
@@ -191,7 +185,6 @@ int main() {
                 states,
                 font
             );
-            std::cout << "Pushing back\n";
             gauges.push_back(gauge);
 
         }

@@ -18,7 +18,7 @@ DigitalGauge::DigitalGauge(std::string name, std::string parameter_name, int x, 
     this->name = name;
     this->parameter_name = parameter_name;
     float min = FLT_MAX;
-    float max = FLT_MIN;
+    float max = -FLT_MAX;
     std::vector<Range> ranges;
     if (states.size() > 0) {
         for (int c = 0; c < states.size(); c++) {
@@ -36,7 +36,7 @@ DigitalGauge::DigitalGauge(std::string name, std::string parameter_name, int x, 
         if (bounds[states.size()] < min) min = bounds[states.size()];
     } else {
         Range range;
-        range.min = FLT_MIN;
+        range.min = -FLT_MAX;
         range.max = FLT_MAX;
         range.state = OK;
         ranges.push_back(range);

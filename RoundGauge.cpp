@@ -21,7 +21,7 @@ RoundGauge::RoundGauge(std::string name, std::string parameter_name, int x, int 
     std::vector<float> bounds_vector{bounds};
     std::vector<State> states_vector{states};
     float min = FLT_MAX;
-    float max = FLT_MIN;
+    float max = -FLT_MAX;
     std::vector<Range> ranges;
     if (states.size() > 0) {
         for (int c = 0; c < states.size(); c++) {
@@ -39,7 +39,7 @@ RoundGauge::RoundGauge(std::string name, std::string parameter_name, int x, int 
         if (bounds[states.size()] < min) min = bounds[states.size()];
     } else {
         Range range;
-        range.min = FLT_MIN;
+        range.min = -FLT_MAX;
         range.max = FLT_MAX;
         range.state = OK;
         ranges.push_back(range);
