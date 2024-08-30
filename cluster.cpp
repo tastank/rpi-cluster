@@ -314,7 +314,14 @@ int main() {
                 DrawTextEx(font, gauge->get_name().c_str(), crit_label_pos, 36.0f, 0, text_color);
                 crit_label_pos.y += 40.0f;
             }
-
+        }
+        // Print anything in WARN state after anything in CRIT state
+        for (Gauge *gauge : gauges) {
+            State state = gauge->get_state();
+            if (gauge->get_state() == WARN) {
+                DrawTextEx(font, gauge->get_name().c_str(), crit_label_pos, 36.0f, 0, gauge->get_color(WARN));
+                crit_label_pos.y += 40.0f;
+            }
         }
 
 #ifdef DEBUG
