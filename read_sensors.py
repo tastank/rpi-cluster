@@ -376,6 +376,8 @@ with open(output_filename, 'w', newline='') as csvfile:
                     logger.warn("Loop took longer than LOG_INTERVAL; repeating measurements")
                     fields["nominal_time"] = next_log_time
                     fields["repeated"] = 1
+                    # in case this was the start of a new lap, don't repeat that
+                    fields["beacon"] = 0
                     csv_writer.writerow(fields)
                     if config["TELEMETRY_UPLOAD"]["upload_enabled"] == "1":
                         telemetry_uploader.send_update(fields)
