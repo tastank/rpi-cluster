@@ -372,7 +372,7 @@ with open(output_filename, 'w', newline='') as csvfile:
                 next_log_time += LOG_INTERVAL
                 last_log_time = current_time
                 # make sure the next observation does not indicate a new lap regardless of whether we have to repeat an observation or fail to get new data from the RaceBox
-                fields["beacon"] = 0
+                beacon = 0
                 # if more than one LOG_INTERVAL has elapsed, repeat the observation as MoTeC is expecting a constant log rate.
                 while current_time >= next_log_time:
                     logger.warn("Loop took longer than LOG_INTERVAL; repeating measurements")
