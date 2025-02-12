@@ -42,9 +42,6 @@ from bleak.backends.characteristic import BleakGATTCharacteristic
 from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
 
-def send_zmq_json(socket, data):
-    socket.send_json(data)
-
 UART_SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
 UART_RX_CHAR_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
 UART_TX_CHAR_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -168,6 +165,7 @@ class RaceBoxData:
         self.rotation_rate_y = 0
         self.rotation_rate_z = 0
         self.serial_number = serial_number
+        self.new_data_available = False
 
     def as_dict(self):
         return {
@@ -213,10 +211,6 @@ class RaceBoxData:
         self.serial_number = sn
 
     async def read_racebox(self, logger):
-        logger.info("Setting up ZMQ socket...")
-        context = zmq.Context()
-        socket = context.socket(zmq.PUSH)
-        socket.connect("tcp://localhost:9962")
 
         def match_racebox(device: BLEDevice, adv: AdvertisementData):
             # This assumes that the device includes the UART service UUID in the
@@ -293,7 +287,7 @@ class RaceBoxData:
             self.rotation_rate_y = int.from_bytes(data[ROTATION_RATE_Y_OFFSET:ROTATION_RATE_Y_OFFSET + ROTATION_RATE_Y_BYTES], "little", signed=True)/100
             self.rotation_rate_z = int.from_bytes(data[ROTATION_RATE_Z_OFFSET:ROTATION_RATE_Z_OFFSET + ROTATION_RATE_Z_BYTES], "little", signed=True)/100
 
-            send_zmq_json(socket, self.as_dict())
+            self.new_data_available = True
 
         def handle_rx(_: BleakGATTCharacteristic, data: bytearray):
             if(not verify_checksum(data)):
@@ -320,6 +314,15 @@ class RaceBoxData:
                 #      This seems pretty silly, so learn how asyncio works and do something more appropriate
                 await loop.run_in_executor(None, stall)
 
+async def async_print():
+    while True:
+        print("running...")
+        await asyncio.sleep(1)
+
+async def main(sn, logger):
+    await asyncio.gather(RaceBoxData(sn).read_racebox(logger), async_print())
+
+
 if __name__ == "__main__":
     # This is the serial number for my device. Update it to yours if you want to test the connection this way
     sn = 3242701007
@@ -345,7 +348,7 @@ if __name__ == "__main__":
     while True:
         try:
             logger.info("Trying to run read_racebox...")
-            asyncio.run(RaceBoxData(sn).read_racebox(logger))
+            asyncio.run(main(sn, logger))
         except asyncio.CancelledError:
             # task is cancelled on disconnect, so we ignore this error
             logger.error("Device disconnected; retrying...")
