@@ -21,6 +21,18 @@ RACEBOX_SN = 3242701007
 CONFIG_FILE = "/home/pi/rpi-cluster/web.conf"
 LOG_DIR = "/home/pi/log/read_sensors/"
 TELEMETRY_DIR = "/home/pi/log/telemetry/"
+
+# TODO don't hardcode this
+# TODO a track with a finish line not oriented directly EW or NS will be more complicated
+# these numbers are significantly off-track, to allow for GPS error and pit stops
+ROAD_AMERICA_FINISH_LINE_LEFT_LONGITUDE = -87.989493
+ROAD_AMERICA_FINISH_LINE_RIGHT_LONGITUDE = -87.990064
+ROAD_AMERICA_FINISH_LINE_LATITUDE = 43.797913
+
+# Interval between log entries, in seconds
+# TODO using this sort of logging method will not indicate stale data. Use something better.
+LOG_INTERVAL = 0.04
+
 os.umask(0)
 os.makedirs(LOG_DIR, exist_ok=True)
 os.makedirs(TELEMETRY_DIR, exist_ok=True)
@@ -40,36 +52,6 @@ logger.setLevel(logging.INFO)
 
 config = configparser.ConfigParser()
 config.read(CONFIG_FILE)
-
-# TODO don't hardcode this
-# TODO a track with a finish line not oriented directly EW or NS will be more complicated
-# these numbers are significantly off-track, to allow for GPS error and pit stops
-ROAD_AMERICA_FINISH_LINE_LEFT_LONGITUDE = -87.989493
-ROAD_AMERICA_FINISH_LINE_RIGHT_LONGITUDE = -87.990064
-ROAD_AMERICA_FINISH_LINE_LATITUDE = 43.797913
-
-filter_sample_counts = {
-    "water_press": 64,
-    "oil_press": 10,
-    "water_temp": 64,
-    "oil_temp": 64,
-    "fuel": 255,
-}
-filter_samples = {key: [0]*filter_sample_counts[key] for key in filter_sample_counts}
-filter_current_sample = {key: 0 for key in filter_sample_counts}
-# this is the square of G force, to avoid the sqrt
-FUEL_SENSOR_G_FORCE_SQ_THRESHOLD = 0.02
-
-def rolling_average_filter_insert(key, value):
-    global filter_sample_counts, filter_samples, filter_current_sample
-    if key not in filter_sample_counts:
-        raise KeyError(f"Attempting to filter a value for which no filter was defined: {key}")
-    filter_samples[key][filter_current_sample[key]] = value
-    filter_current_sample[key] = (filter_current_sample[key] + 1) % filter_sample_counts[key]
-
-def rolling_average_filter_get(key):
-    global filter_sample_counts, filter_samples, filter_current_sample
-    return round(sum(filter_samples[key])/filter_sample_counts[key], 1)
 
 context = zmq.Context()
 cluster_socket = context.socket(zmq.PUSH)
@@ -120,6 +102,17 @@ fieldnames = [
 fieldnames.extend(racebox_fields)
 fieldnames.extend(arduino_fields)
 fields = {fieldname: 0 for fieldname in fieldnames}
+filter_sample_counts = {
+    "water_press": 64,
+    "oil_press": 10,
+    "water_temp": 64,
+    "oil_temp": 64,
+    "fuel": 255,
+}
+filter_samples = {key: [0]*filter_sample_counts[key] for key in filter_sample_counts}
+filter_current_sample = {key: 0 for key in filter_sample_counts}
+# this is the square of G force, to avoid the sqrt
+FUEL_SENSOR_G_FORCE_SQ_THRESHOLD = 0.02
 
 rounded_fields = {
     "system_time": 3,
@@ -132,21 +125,6 @@ rounded_fields = {
     "gforce_z": 3,
     "cumulative_lap_distance": 4,
 }
-
-# the only other socket should be read-only, but since there are multiple it feels wrong to assume which one we'll be using
-def send_zmqpp(message, socket=cluster_socket):
-    if "inf" not in message:
-        logger.debug(message)
-        socket.send(message.encode())
-    else:
-        logger.debug("Value is inf; skipping: {}".format(message))
-
-def send_zmq_data(key, value, socket=cluster_socket):
-    send_zmqpp(f"{key}:{value}", socket)
-
-# Interval between log entries, in seconds
-# TODO using this sort of logging method will not indicate stale data. Use something better.
-LOG_INTERVAL = 0.04
 
 ZMQ_NAME = {
     "fuel": "FUEL",
@@ -161,6 +139,28 @@ ZMQ_NAME = {
     "rpm": "RPM",
     "flash": "FLASH",
 }
+
+# the only other socket should be read-only, but since there are multiple it feels wrong to assume which one we'll be using
+def send_zmqpp(message, socket=cluster_socket):
+    if "inf" not in message:
+        logger.debug(message)
+        socket.send(message.encode())
+    else:
+        logger.debug("Value is inf; skipping: {}".format(message))
+
+def send_zmq_data(key, value, socket=cluster_socket):
+    send_zmqpp(f"{key}:{value}", socket)
+
+def rolling_average_filter_insert(key, value):
+    global filter_sample_counts, filter_samples, filter_current_sample
+    if key not in filter_sample_counts:
+        raise KeyError(f"Attempting to filter a value for which no filter was defined: {key}")
+    filter_samples[key][filter_current_sample[key]] = value
+    filter_current_sample[key] = (filter_current_sample[key] + 1) % filter_sample_counts[key]
+
+def rolling_average_filter_get(key):
+    global filter_sample_counts, filter_samples, filter_current_sample
+    return round(sum(filter_samples[key])/filter_sample_counts[key], 1)
 
 # TODO give this a more descriptive name
 async def main_loop(racebox_data, arduino_data):
