@@ -26,16 +26,11 @@ TODO: do something with the flags types other than just coercing them to int and
 
 import asyncio
 import bleak
-import json
 import logging
 import os
-import sys
 import time
-import zmq
 
 from enum import IntEnum
-from itertools import count, takewhile
-from typing import Iterator
 
 from bleak import BleakClient, BleakScanner
 from bleak.backends.characteristic import BleakGATTCharacteristic
