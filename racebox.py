@@ -26,24 +26,16 @@ TODO: do something with the flags types other than just coercing them to int and
 
 import asyncio
 import bleak
-import json
 import logging
 import os
-import sys
 import time
-import zmq
 
 from enum import IntEnum
-from itertools import count, takewhile
-from typing import Iterator
 
 from bleak import BleakClient, BleakScanner
 from bleak.backends.characteristic import BleakGATTCharacteristic
 from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
-
-def send_zmq_json(socket, data):
-    socket.send_json(data)
 
 UART_SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
 UART_RX_CHAR_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -127,10 +119,7 @@ class FixStatus(IntEnum):
     FIX_3D = 3
 
 class RaceBoxData:
-    def __init__(self):
-        self.__init__(0)
-
-    def __init__(self, serial_number):
+    def __init__(self, serial_number, logger):
         self.iTOW = 0
         self.year = 0
         self.month = 0
@@ -168,6 +157,8 @@ class RaceBoxData:
         self.rotation_rate_y = 0
         self.rotation_rate_z = 0
         self.serial_number = serial_number
+        self.new_data_available = False
+        self.logger = logger
 
     def as_dict(self):
         return {
@@ -212,11 +203,7 @@ class RaceBoxData:
     def set_serial_number(self, sn):
         self.serial_number = sn
 
-    async def read_racebox(self, logger):
-        logger.info("Setting up ZMQ socket...")
-        context = zmq.Context()
-        socket = context.socket(zmq.PUSH)
-        socket.connect("tcp://localhost:9962")
+    async def read_racebox(self):
 
         def match_racebox(device: BLEDevice, adv: AdvertisementData):
             # This assumes that the device includes the UART service UUID in the
@@ -227,16 +214,16 @@ class RaceBoxData:
 
             return False
 
-        logger.info("Attempting to find RaceBox device...")
+        self.logger.info("Attempting to find RaceBox device...")
         device = await BleakScanner.find_device_by_filter(match_racebox)
 
         if device is None:
-            logger.error("no matching device found, you may need to edit match_racebox().")
+            self.logger.error("no matching device found, you may need to edit match_racebox().")
             return
-        logger.info("RaceBox found")
+        self.logger.info("RaceBox found")
 
         def handle_disconnect(_: BleakClient):
-            logger.warn("Device was disconnected, goodbye.")
+            self.logger.warn("Device was disconnected, goodbye.")
             # cancelling all tasks effectively ends the program
             for task in asyncio.all_tasks():
                 task.cancel()
@@ -293,11 +280,11 @@ class RaceBoxData:
             self.rotation_rate_y = int.from_bytes(data[ROTATION_RATE_Y_OFFSET:ROTATION_RATE_Y_OFFSET + ROTATION_RATE_Y_BYTES], "little", signed=True)/100
             self.rotation_rate_z = int.from_bytes(data[ROTATION_RATE_Z_OFFSET:ROTATION_RATE_Z_OFFSET + ROTATION_RATE_Z_BYTES], "little", signed=True)/100
 
-            send_zmq_json(socket, self.as_dict())
+            self.new_data_available = True
 
         def handle_rx(_: BleakGATTCharacteristic, data: bytearray):
             if(not verify_checksum(data)):
-                logger.warn("Checksum failed!")
+                self.logger.warn("Checksum failed!")
                 return
             # TODO handle other payload types
             if data[4] != 0x50 or data[5] != 0x00:
@@ -309,9 +296,9 @@ class RaceBoxData:
             time.sleep(5)
 
         async with BleakClient(device, disconnected_callback=handle_disconnect) as client:
-            logger.debug("Connected... I think?")
+            self.logger.debug("Connected... I think?")
             await client.start_notify(UART_TX_CHAR_UUID, handle_rx)
-            logger.info("Connected to RaceBox")
+            self.logger.info("Connected to RaceBox")
 
             loop = asyncio.get_running_loop()
 
@@ -345,7 +332,7 @@ if __name__ == "__main__":
     while True:
         try:
             logger.info("Trying to run read_racebox...")
-            asyncio.run(RaceBoxData(sn).read_racebox(logger))
+            asyncio.run(RaceBoxData(sn, logger).read_racebox())
         except asyncio.CancelledError:
             # task is cancelled on disconnect, so we ignore this error
             logger.error("Device disconnected; retrying...")
