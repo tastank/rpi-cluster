@@ -119,7 +119,7 @@ class FixStatus(IntEnum):
     FIX_3D = 3
 
 class RaceBoxData:
-    def __init__(self, serial_number, logger):
+    def __init__(self, serial_number, logger, limited_fields=None):
         self.iTOW = 0
         self.year = 0
         self.month = 0
@@ -159,6 +159,11 @@ class RaceBoxData:
         self.serial_number = serial_number
         self.new_data_available = False
         self.logger = logger
+        self.limited_fields = limited_fields
+        if self.limited_fields is None:
+            self.limited_fields = self.as_dict.keys()
+        # allocate this once to enable faster access
+        self.limited_dict = {field: None for field in self.limited_fields}
 
     def as_dict(self):
         return {
@@ -199,6 +204,12 @@ class RaceBoxData:
             "rotation_rate_y": self.rotation_rate_y,
             "rotation_rate_z": self.rotation_rate_z,
         }
+
+    def limited_as_dict(self):
+        for key in self.__dict__:
+            if key in self.limited_dict:
+                self.limited_dict[key] = self.__dict__[key]
+        return self.limited_dict
 
     def set_serial_number(self, sn):
         self.serial_number = sn
