@@ -167,6 +167,9 @@ def send_zmqpp(message, socket=cluster_socket):
     else:
         logger.debug("Value is inf; skipping: {}".format(message))
 
+def send_zmq_data(key, value, socket=cluster_socket):
+    send_zmqpp(f"{key}:{value}", socket)
+
 # Interval between log entries, in seconds
 # TODO using this sort of logging method will not indicate stale data. Use something better.
 LOG_INTERVAL = 0.04
@@ -216,16 +219,16 @@ async def main_loop(racebox_data, arduino_data):
                             if key in filter_samples and (key != "fuel" or (gforce_x*gforce_x + gforce_y*gforce_y) < FUEL_SENSOR_G_FORCE_SQ_THRESHOLD):
                                 rolling_average_filter_insert(key, arduino_data_dict[key])
                                 fields[filtered_key] = rolling_average_filter_get(key)
-                                send_zmqpp(f"{ZMQ_NAME[key]}:{fields[filtered_key]}")
+                                send_zmq_data(ZMQ_NAME[key], fields[filtered_key])
                             elif key not in filter_samples and key in ZMQ_NAME:
-                                send_zmqpp(f"{ZMQ_NAME[key]}:{fields[key]}")
+                                send_zmq_data(ZMQ_NAME[key], fields[key])
 
                     arduino_data.reset()
 
-                send_zmqpp("TIME:{}".format(int(time.clock_gettime(time.CLOCK_BOOTTIME)/60)))
+                send_zmq_data("TIME", int(time.clock_gettime(time.CLOCK_BOOTTIME)/60))
                 if racebox_data.new_data_available:
                     mph = racebox_data.speed_mph
-                    send_zmqpp("MPH:{}".format(mph))
+                    send_zmq_data("MPH", mph)
                     track = racebox_data.heading
                     latitude = racebox_data.latitude
                     longitude = racebox_data.longitude
@@ -237,7 +240,7 @@ async def main_loop(racebox_data, arduino_data):
                     gforce_y = racebox_data.gforce_y
                     gforce_z = racebox_data.gforce_z
                     volts = racebox_data.input_voltage
-                    send_zmqpp("VOLTS:{}".format(volts))
+                    send_zmq_data("VOLTS", volts)
                     current_time = time.monotonic()
                     cumulative_lap_distance += mph * (current_time - last_racebox_update) / 3600.0
                     last_racebox_update = time.monotonic()
