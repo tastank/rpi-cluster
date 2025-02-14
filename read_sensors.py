@@ -321,9 +321,9 @@ async def main_loop(racebox_data, arduino_data):
     logger.debug("DONE")
 
 async def main(racebox_data, arduino_data):
-    await asyncio.gather(main_loop(racebox_data, arduino_data), racebox_data.read_racebox(logger), arduino_data.read_arduino_data())
+    await asyncio.gather(main_loop(racebox_data, arduino_data), racebox_data.read_racebox(), arduino_data.read_arduino_data())
 
 if __name__ == "__main__":
-    racebox_data = racebox.RaceBoxData(RACEBOX_SN)
+    racebox_data = racebox.RaceBoxData(RACEBOX_SN, logger)
     arduino_data = arduino_sensors.ArduinoSensors(logger=logger)
     asyncio.run(main(racebox_data, arduino_data))

@@ -124,10 +124,7 @@ class FixStatus(IntEnum):
     FIX_3D = 3
 
 class RaceBoxData:
-    def __init__(self):
-        self.__init__(0)
-
-    def __init__(self, serial_number):
+    def __init__(self, serial_number, logger):
         self.iTOW = 0
         self.year = 0
         self.month = 0
@@ -166,6 +163,7 @@ class RaceBoxData:
         self.rotation_rate_z = 0
         self.serial_number = serial_number
         self.new_data_available = False
+        self.logger = logger
 
     def as_dict(self):
         return {
@@ -210,7 +208,7 @@ class RaceBoxData:
     def set_serial_number(self, sn):
         self.serial_number = sn
 
-    async def read_racebox(self, logger):
+    async def read_racebox(self):
 
         def match_racebox(device: BLEDevice, adv: AdvertisementData):
             # This assumes that the device includes the UART service UUID in the
@@ -221,16 +219,16 @@ class RaceBoxData:
 
             return False
 
-        logger.info("Attempting to find RaceBox device...")
+        self.logger.info("Attempting to find RaceBox device...")
         device = await BleakScanner.find_device_by_filter(match_racebox)
 
         if device is None:
-            logger.error("no matching device found, you may need to edit match_racebox().")
+            self.logger.error("no matching device found, you may need to edit match_racebox().")
             return
-        logger.info("RaceBox found")
+        self.logger.info("RaceBox found")
 
         def handle_disconnect(_: BleakClient):
-            logger.warn("Device was disconnected, goodbye.")
+            self.logger.warn("Device was disconnected, goodbye.")
             # cancelling all tasks effectively ends the program
             for task in asyncio.all_tasks():
                 task.cancel()
@@ -291,7 +289,7 @@ class RaceBoxData:
 
         def handle_rx(_: BleakGATTCharacteristic, data: bytearray):
             if(not verify_checksum(data)):
-                logger.warn("Checksum failed!")
+                self.logger.warn("Checksum failed!")
                 return
             # TODO handle other payload types
             if data[4] != 0x50 or data[5] != 0x00:
@@ -303,9 +301,9 @@ class RaceBoxData:
             time.sleep(5)
 
         async with BleakClient(device, disconnected_callback=handle_disconnect) as client:
-            logger.debug("Connected... I think?")
+            self.logger.debug("Connected... I think?")
             await client.start_notify(UART_TX_CHAR_UUID, handle_rx)
-            logger.info("Connected to RaceBox")
+            self.logger.info("Connected to RaceBox")
 
             loop = asyncio.get_running_loop()
 
@@ -313,15 +311,6 @@ class RaceBoxData:
                 # TODO I don't really understand asyncio, but without this the with block will terminate and close the connection.
                 #      This seems pretty silly, so learn how asyncio works and do something more appropriate
                 await loop.run_in_executor(None, stall)
-
-async def async_print():
-    while True:
-        print("running...")
-        await asyncio.sleep(1)
-
-async def main(sn, logger):
-    await asyncio.gather(RaceBoxData(sn).read_racebox(logger), async_print())
-
 
 if __name__ == "__main__":
     # This is the serial number for my device. Update it to yours if you want to test the connection this way
@@ -348,7 +337,7 @@ if __name__ == "__main__":
     while True:
         try:
             logger.info("Trying to run read_racebox...")
-            asyncio.run(main(sn, logger))
+            asyncio.run(RaceBoxData(sn, logger).read_racebox())
         except asyncio.CancelledError:
             # task is cancelled on disconnect, so we ignore this error
             logger.error("Device disconnected; retrying...")
