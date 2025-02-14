@@ -41,8 +41,6 @@ logger.setLevel(logging.INFO)
 config = configparser.ConfigParser()
 config.read(CONFIG_FILE)
 
-cpu = gpiozero.CPUTemperature()
-
 # TODO don't hardcode this
 # TODO a track with a finish line not oriented directly EW or NS will be more complicated
 # these numbers are significantly off-track, to allow for GPS error and pit stops
@@ -135,18 +133,6 @@ rounded_fields = {
     "cumulative_lap_distance": 4,
 }
 
-if config["TELEMETRY_UPLOAD"]["upload_enabled"] == "1":
-    uploader_fieldnames = copy.copy(fieldnames)
-    # ignore these fields to conserve bandwidth
-    for ignore_field in ["nominal_time", "iteration_time", "loop_time", "oil_press", "oil_temp", "water_press", "water_temp", "gps_utc_date"]:
-        uploader_fieldnames.remove(ignore_field)
-    telemetry_uploader = telemetry_upload.TelemetryUploader(
-            fieldnames=uploader_fieldnames,
-            address=config["TELEMETRY_UPLOAD"]["address"],
-            port=config["TELEMETRY_UPLOAD"]["port"],
-            logger=logger,
-    )
-
 # the only other socket should be read-only, but since there are multiple it feels wrong to assume which one we'll be using
 def send_zmqpp(message, socket=cluster_socket):
     if "inf" not in message:
@@ -162,11 +148,6 @@ def send_zmq_data(key, value, socket=cluster_socket):
 # TODO using this sort of logging method will not indicate stale data. Use something better.
 LOG_INTERVAL = 0.04
 
-output_filename = os.path.join(TELEMETRY_DIR, "{:04}.csv".format(log_number))
-logger.info("Starting CSV output to {}".format(output_filename))
-
-previous_latitude = 0
-
 ZMQ_NAME = {
     "fuel": "FUEL",
     "speed_mph": "MPH",
@@ -181,18 +162,32 @@ ZMQ_NAME = {
     "flash": "FLASH",
 }
 
-
 # TODO give this a more descriptive name
 async def main_loop(racebox_data, arduino_data):
-    # TODO pack these all into a single dict
-    global fields, output_filename
+    global config, fields, filter_samples, logger, log_number, rounded_fields, FUEL_SENSOR_G_FORCE_SQ_THRESHOLD, LOG_INTERVAL, TELEMETRY_DIR
+    output_filename = os.path.join(TELEMETRY_DIR, "{:04}.csv".format(log_number))
+    logger.info("Starting CSV output to {}".format(output_filename))
+    cpu = gpiozero.CPUTemperature()
+    previous_latitude = 0
     last_racebox_update = time.monotonic()
     laptime_start = time.monotonic()
     last_log_time = int(time.monotonic())
     # I'm OK with missing a second of data to not log a bunch of repeats to fill the gap between the floor of the timestamp and the actual start time
     next_log_time = last_log_time + 1
-
     cumulative_lap_distance = 0
+
+    if config["TELEMETRY_UPLOAD"]["upload_enabled"] == "1":
+        uploader_fieldnames = copy.copy(fieldnames)
+        # ignore these fields to conserve bandwidth
+        for ignore_field in ["nominal_time", "iteration_time", "loop_time", "oil_press", "oil_temp", "water_press", "water_temp", "gps_utc_date"]:
+            uploader_fieldnames.remove(ignore_field)
+        telemetry_uploader = telemetry_upload.TelemetryUploader(
+                fieldnames=uploader_fieldnames,
+                address=config["TELEMETRY_UPLOAD"]["address"],
+                port=config["TELEMETRY_UPLOAD"]["port"],
+                logger=logger,
+        )
+
     with open(output_filename, 'w', newline='') as csvfile:
         csv_writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         csv_writer.writeheader()
@@ -230,6 +225,7 @@ async def main_loop(racebox_data, arduino_data):
                     cumulative_lap_distance += fields["speed_mph"] * (current_time - last_racebox_update) / 3600.0
                     last_racebox_update = current_time
                     # TODO more hardcoding to remove; should maybe just save this for the analysis script
+                    global ROAD_AMERICA_FINISH_LINE_LEFT_LONGITUDE, ROAD_AMERICA_FINISH_LINE_RIGHT_LONGITUDE, ROAD_AMERICA_FINISH_LINE_LATITUDE
                     if fields["longitude"] < ROAD_AMERICA_FINISH_LINE_LEFT_LONGITUDE and fields["longitude"] > ROAD_AMERICA_FINISH_LINE_RIGHT_LONGITUDE and fields["latitude"] < ROAD_AMERICA_FINISH_LINE_LATITUDE and previous_latitude > ROAD_AMERICA_FINISH_LINE_LATITUDE and time.monotonic() - laptime_start > 30:
                         laptime_end = current_time
                         fields["beacon"] = 1
