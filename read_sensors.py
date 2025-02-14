@@ -8,8 +8,6 @@ import datetime
 import gpiozero
 import logging
 import os
-import serial
-import sys
 import time
 import traceback
 import zmq
@@ -45,33 +43,6 @@ config.read(CONFIG_FILE)
 
 cpu = gpiozero.CPUTemperature()
 
-rpm = 0
-oil_temp = 0
-oil_temp_filtered = 0
-oil_press = 0
-oil_press_filtered = 0
-water_temp = 0
-water_temp_filtered = 0
-water_press = 0
-water_press_filtered = 0
-fuel = 0
-fuel_qty_filtered = 0
-arduino_temp = 0
-mph = 0
-latitude = 0
-longitude = 0
-altitude = 0
-volts = 0
-track = 0
-gforce_x = 0
-gforce_y = 0
-gforce_z = 0
-gps_utc_date = ""
-gps_utc_time = ""
-cumulative_lap_distance = 0
-lap_number = 0
-beacon = 0
-
 # TODO don't hardcode this
 # TODO a track with a finish line not oriented directly EW or NS will be more complicated
 # these numbers are significantly off-track, to allow for GPS error and pit stops
@@ -100,52 +71,69 @@ def rolling_average_filter_insert(key, value):
 
 def rolling_average_filter_get(key):
     global filter_sample_counts, filter_samples, filter_current_sample
-    return sum(filter_samples[key])/filter_sample_counts[key]
-
-last_log_time = int(time.monotonic())
-# I'm OK with missing a second of data to not log a bunch of repeats to fill the gap between the floor of the timestamp and the actual start time
-next_log_time = last_log_time + 1
+    return round(sum(filter_samples[key])/filter_sample_counts[key], 1)
 
 context = zmq.Context()
 cluster_socket = context.socket(zmq.PUSH)
 cluster_socket.connect("tcp://localhost:9961")
 
+# these fields come directly from data reported by the RaceBox or Arduino, respectively
+racebox_fields = [
+    "latitude",
+    "longitude",
+    "msl_altitude_ft",
+    "speed_mph",
+    "heading",
+    "gforce_x",
+    "gforce_y",
+    "gforce_z",
+    "input_voltage",
+]
+arduino_fields = [
+    "rpm",
+    "oil_temp",
+    "oil_press",
+    "water_temp",
+    "water_press",
+    "arduino_temp",
+    "fuel",
+]
+
+# these need some processing
 fieldnames = [
     "system_time",
     "nominal_time",
     # TODO there has to be a better name than "iteration_time"; this is the elapsed time since data was last logged, and should equal LOG_INTERVAL on average
     "iteration_time",
     "loop_time",
-    "rpm",
-    "oil_press",
-    "oil_press_filtered",
-    "oil_temp",
-    "oil_temp_filtered",
-    "water_press",
-    "water_press_filtered",
-    "water_temp",
-    "water_temp_filtered",
-    "arduino_temp",
-    "volts",
-    "fuel",
-    "fuel_qty_filtered",
     "gps_utc_date",
     "gps_utc_time",
-    "lat",
-    "lon",
-    "alt",
-    "mph",
-    "track",
-    "gforce_x",
-    "gforce_y",
-    "gforce_z",
+    "oil_press_filtered",
+    "oil_temp_filtered",
+    "water_press_filtered",
+    "water_temp_filtered",
+    "fuel_filtered",
     "beacon",
     "lap_number",
     "cumulative_lap_distance",
     "rpi_cpu_temp",
     "repeated",
 ]
-fields = {fieldname: None for fieldname in fieldnames}
+fieldnames.extend(racebox_fields)
+fieldnames.extend(arduino_fields)
+fields = {fieldname: 0 for fieldname in fieldnames}
+
+rounded_fields = {
+    "system_time": 3,
+    "nominal_time": 3,
+    "iteration_time": 4,
+    "loop_time": 4,
+    "heading": 1,
+    "gforce_x": 3,
+    "gforce_y": 3,
+    "gforce_z": 3,
+    "cumulative_lap_distance": 4,
+}
 
 if config["TELEMETRY_UPLOAD"]["upload_enabled"] == "1":
     uploader_fieldnames = copy.copy(fieldnames)
@@ -174,20 +162,15 @@ def send_zmq_data(key, value, socket=cluster_socket):
 # TODO using this sort of logging method will not indicate stale data. Use something better.
 LOG_INTERVAL = 0.04
 
-# I'm OK with missing a second of data to not log a bunch of repeats to fill the gap between the floor of the timestamp and the actual start time
-next_log_time = int(time.monotonic()) + 1
-
 output_filename = os.path.join(TELEMETRY_DIR, "{:04}.csv".format(log_number))
 logger.info("Starting CSV output to {}".format(output_filename))
 
-laptime_start = time.monotonic()
-last_racebox_update = time.monotonic()
 previous_latitude = 0
 
 ZMQ_NAME = {
     "fuel": "FUEL",
     "speed_mph": "MPH",
-    "volts": "VOLTS",
+    "input_voltage": "VOLTS",
     # TODO what is the key for "TIME"?
     "stint_time": "TIME",
     "oil_temp": "OT",
@@ -202,7 +185,14 @@ ZMQ_NAME = {
 # TODO give this a more descriptive name
 async def main_loop(racebox_data, arduino_data):
     # TODO pack these all into a single dict
-    global rpm, oil_temp, oil_temp_filtered, oil_press, oil_press_filtered, water_temp, water_temp_filtered, water_press, water_press_filtered, fuel, fuel_qty_filtered, arduino_temp, mph, latitude, longitude, altitude, volts, track, gforce_x, gforce_y, gforce_z, gps_utc_date, gps_utc_time, cumulative_lap_distance, lap_number, beacon, next_log_time, last_log_time, arduino, output_filename, last_racebox_update
+    global fields, output_filename
+    last_racebox_update = time.monotonic()
+    laptime_start = time.monotonic()
+    last_log_time = int(time.monotonic())
+    # I'm OK with missing a second of data to not log a bunch of repeats to fill the gap between the floor of the timestamp and the actual start time
+    next_log_time = last_log_time + 1
+
+    cumulative_lap_distance = 0
     with open(output_filename, 'w', newline='') as csvfile:
         csv_writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         csv_writer.writeheader()
@@ -216,7 +206,7 @@ async def main_loop(racebox_data, arduino_data):
                         if arduino_data_dict[key] is not None and key in fields:
                             filtered_key = key + "_filtered"
                             fields[key] = arduino_data_dict[key]
-                            if key in filter_samples and (key != "fuel" or (gforce_x*gforce_x + gforce_y*gforce_y) < FUEL_SENSOR_G_FORCE_SQ_THRESHOLD):
+                            if key in filter_samples and (key != "fuel" or (fields["gforce_x"]**2 + fields["gforce_y"]**2) < FUEL_SENSOR_G_FORCE_SQ_THRESHOLD):
                                 rolling_average_filter_insert(key, arduino_data_dict[key])
                                 fields[filtered_key] = rolling_average_filter_get(key)
                                 send_zmq_data(ZMQ_NAME[key], fields[filtered_key])
@@ -227,90 +217,59 @@ async def main_loop(racebox_data, arduino_data):
 
                 send_zmq_data("TIME", int(time.clock_gettime(time.CLOCK_BOOTTIME)/60))
                 if racebox_data.new_data_available:
-                    mph = racebox_data.speed_mph
-                    send_zmq_data("MPH", mph)
-                    track = racebox_data.heading
-                    latitude = racebox_data.latitude
-                    longitude = racebox_data.longitude
-                    altitude = racebox_data.msl_altitude_ft
-                    gps_utc_date = f"{racebox_data.year}-{racebox_data.month:02}-{racebox_data.day:02}"
+                    racebox_data_dict = racebox_data.limited_as_dict()
+                    for key in racebox_data_dict:
+                        fields[key] = racebox_data_dict[key]
+                        if key in ZMQ_NAME:
+                            send_zmq_data(ZMQ_NAME[key], fields[key])
+                    fields["gps_utc_date"] = f"{racebox_data.year}-{racebox_data.month:02}-{racebox_data.day:02}"
                     seconds = racebox_data.second + racebox_data.nanoseconds/1e9
-                    gps_utc_time = f"{racebox_data.hour:02}:{racebox_data.minute:02}:{seconds:05.2f}"
-                    gforce_x = racebox_data.gforce_x
-                    gforce_y = racebox_data.gforce_y
-                    gforce_z = racebox_data.gforce_z
-                    volts = racebox_data.input_voltage
-                    send_zmq_data("VOLTS", volts)
+                    fields["gps_utc_time"] = f"{racebox_data.hour:02}:{racebox_data.minute:02}:{seconds:05.2f}"
                     current_time = time.monotonic()
-                    cumulative_lap_distance += mph * (current_time - last_racebox_update) / 3600.0
-                    last_racebox_update = time.monotonic()
+                    # don't write cumulative_lap_distance directly to the fields dict as it will be rounded
+                    cumulative_lap_distance += fields["speed_mph"] * (current_time - last_racebox_update) / 3600.0
+                    last_racebox_update = current_time
                     # TODO more hardcoding to remove; should maybe just save this for the analysis script
-                    if longitude < ROAD_AMERICA_FINISH_LINE_LEFT_LONGITUDE and longitude > ROAD_AMERICA_FINISH_LINE_RIGHT_LONGITUDE and latitude < ROAD_AMERICA_FINISH_LINE_LATITUDE and previous_latitude > ROAD_AMERICA_FINISH_LINE_LATITUDE and time.monotonic() - laptime_start > 30:
+                    if fields["longitude"] < ROAD_AMERICA_FINISH_LINE_LEFT_LONGITUDE and fields["longitude"] > ROAD_AMERICA_FINISH_LINE_RIGHT_LONGITUDE and fields["latitude"] < ROAD_AMERICA_FINISH_LINE_LATITUDE and previous_latitude > ROAD_AMERICA_FINISH_LINE_LATITUDE and time.monotonic() - laptime_start > 30:
                         laptime_end = current_time
-                        beacon = 1
+                        fields["beacon"] = 1
                         laptime = laptime_end - laptime_start
-                        lap_number += 1
+                        fields["lap_number"] += 1
                         laptime_start = laptime_end
                         cumulative_lap_distance = 0
                     else:
-                        beacon = 0
-                    previous_latitude = latitude
+                        fields["beacon"] = 0
+                    previous_latitude = fields["latitude"]
                     racebox_data.new_data_available = False
 
                 # use a consistent time for the following checks
                 current_time = time.monotonic()
                 if current_time >= next_log_time:
-                    csv_fields = {
-                        "system_time": round(current_time, 3),
-                        "nominal_time": round(next_log_time, 3),
-                        "iteration_time": round(current_time - last_log_time, 4),
-                        "loop_time": round(current_time - loop_start_time, 4),
-                        "rpm": fields["rpm"],
-                        "oil_press": fields["oil_press"],
-                        "oil_press_filtered": round(fields["oil_press_filtered"], 1),
-                        "oil_temp": fields["oil_temp"],
-                        "oil_temp_filtered": round(fields["oil_temp_filtered"], 1),
-                        "water_press": fields["water_press"],
-                        "water_press_filtered": round(fields["water_press_filtered"], 1),
-                        "water_temp": fields["water_temp"],
-                        "water_temp_filtered": round(fields["water_temp_filtered"], 1),
-                        "arduino_temp": fields["arduino_temp"],
-                        "volts": volts,
-                        "fuel": fields["fuel"],
-                        "fuel_qty_filtered": round(fields["fuel_filtered"], 1),
-                        "gps_utc_date": gps_utc_date,
-                        "gps_utc_time": gps_utc_time,
-                        "lat": latitude,
-                        "lon": longitude,
-                        "alt": altitude,
-                        "mph": mph,
-                        "track": round(track, 1),
-                        "gforce_x": round(gforce_x, 3),
-                        "gforce_y": round(gforce_y, 3),
-                        "gforce_z": round(gforce_z, 3),
-                        "beacon": beacon,
-                        "lap_number": lap_number,
-                        "cumulative_lap_distance": round(cumulative_lap_distance, 2),
-                        "rpi_cpu_temp": cpu.temperature,
-                        "repeated": 0,
-                    }
-                    csv_writer.writerow(csv_fields)
+                    fields["system_time"] = current_time
+                    fields["nominal_time"] = next_log_time
+                    fields["iteration_time"] = current_time - last_log_time
+                    fields["loop_time"] = current_time - loop_start_time
+                    fields["rpi_cpu_temp"] = cpu.temperature,
+                    fields["repeated"] = 0,
+                    for fieldname in rounded_fields:
+                        fields[fieldname] = round(fields[fieldname], rounded_fields[fieldname])
+                    csv_writer.writerow(fields)
                     if config["TELEMETRY_UPLOAD"]["upload_enabled"] == "1":
-                        telemetry_uploader.enqueue_update(csv_fields)
+                        telemetry_uploader.enqueue_update(fields)
                     next_log_time += LOG_INTERVAL
                     last_log_time = current_time
                     # make sure the next observation does not indicate a new lap
-                    beacon = 0
+                    fields["beacon"] = 0
                     # if more than one LOG_INTERVAL has elapsed, repeat the observation as MoTeC is expecting a constant log rate.
                     while current_time >= next_log_time:
                         logger.warn("Loop took longer than LOG_INTERVAL; repeating measurements")
-                        csv_fields["nominal_time"] = next_log_time
+                        fields["nominal_time"] = next_log_time
                         # do not repeat starting of a new lap
-                        csv_fields["beacon"] = 0
-                        csv_fields["repeated"] = 1
-                        csv_writer.writerow(csv_fields)
+                        fields["beacon"] = 0
+                        fields["repeated"] = 1
+                        csv_writer.writerow(fields)
                         if config["TELEMETRY_UPLOAD"]["upload_enabled"] == "1":
-                            telemetry_uploader.enqueue_update(csv_fields)
+                            telemetry_uploader.enqueue_update(fields)
                         next_log_time += LOG_INTERVAL
 
                 await asyncio.sleep(0.01)
@@ -327,6 +286,6 @@ async def main(racebox_data, arduino_data):
     await asyncio.gather(main_loop(racebox_data, arduino_data), racebox_data.read_racebox(), arduino_data.read_arduino_data())
 
 if __name__ == "__main__":
-    racebox_data = racebox.RaceBoxData(RACEBOX_SN, logger)
+    racebox_data = racebox.RaceBoxData(RACEBOX_SN, logger, limited_fields=racebox_fields)
     arduino_data = arduino_sensors.ArduinoSensors(logger=logger)
     asyncio.run(main(racebox_data, arduino_data))
