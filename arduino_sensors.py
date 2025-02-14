@@ -96,7 +96,8 @@ class ArduinoSensors:
                         if len(message) > 100:
                             break
                         if "STOP" in message:
-                            send_zmqpp("STOP")
+                            # TODO detect this in the main loop
+                            #send_zmqpp("STOP")
                             sys.exit("STOP command received.")
                         if "RESET" in message:
                             self.logger.warn("Arduino reset")
