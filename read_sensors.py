@@ -198,15 +198,18 @@ async def main_loop(racebox_data, arduino_data):
                 if arduino_data.new_data_available:
                     arduino_data_dict = arduino_data.as_dict()
                     for key in arduino_data_dict:
-                        if arduino_data_dict[key] is not None and key in fields:
-                            filtered_key = key + "_filtered"
-                            fields[key] = arduino_data_dict[key]
-                            if key in filter_samples and (key != "fuel" or (fields["gforce_x"]**2 + fields["gforce_y"]**2) < FUEL_SENSOR_G_FORCE_SQ_THRESHOLD):
-                                rolling_average_filter_insert(key, arduino_data_dict[key])
-                                fields[filtered_key] = rolling_average_filter_get(key)
-                                send_zmq_data(ZMQ_NAME[key], fields[filtered_key])
-                            elif key not in filter_samples and key in ZMQ_NAME:
-                                send_zmq_data(ZMQ_NAME[key], fields[key])
+                        if arduino_data_dict[key] is not None:
+                            if key in fields:
+                                fields[key] = arduino_data_dict[key]
+                                if key in filter_samples and (key != "fuel" or (fields["gforce_x"]**2 + fields["gforce_y"]**2) < FUEL_SENSOR_G_FORCE_SQ_THRESHOLD):
+                                    filtered_key = key + "_filtered"
+                                    rolling_average_filter_insert(key, arduino_data_dict[key])
+                                    fields[filtered_key] = rolling_average_filter_get(key)
+                            if key in ZMQ_NAME:
+                                data = arduino_data_dict[key]
+                                if key in filter_samples:
+                                    data = fields[key+"_filtered"]
+                                send_zmq_data(ZMQ_NAME[key], data)
 
                     arduino_data.reset()
 
